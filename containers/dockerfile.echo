@@ -1,0 +1,8 @@
+ARG IMAGE=mcr.microsoft.com/vscode/devcontainers/base
+ARG VARIANT=buster
+FROM ${IMAGE}:${VARIANT}
+LABEL maintainer "Chris King - https://github.com/kingces95"
+ARG ARGUMENT=Hawaii
+
+ENV myVariable=${ARGUMENT}
+CMD echo $myVariable

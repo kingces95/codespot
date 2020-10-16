@@ -1,0 +1,8 @@
+version: "3.7"
+
+services:
+  left:
+    image: nat
+
+  right:
+    image: nat

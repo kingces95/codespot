@@ -1,0 +1,36 @@
+ARG IMAGE=
+ARG VARIANT=
+
+# https://github.com/microsoft/vscode-dev-containers
+FROM mcr.microsoft.com/vscode/devcontainers/${IMAGE}:${VARIANT}
+
+# enable sshd, and sshd logging to /var/log/auth.log
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+   apt-get -y install --no-install-recommends \
+      rsyslog \
+      openssh-server \
+      openssh-client && \
+   apt-get autoremove -y && \
+   apt-get clean -y && \
+   rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=dialog
+
+# see https://unix.stackexchange.com/questions/159094/how-to-install-a-deb-file-by-dpkg-i-or-by-apt
+ARG AZBRIDGE
+ARG ARCHIVE_DIR=/var/cache/apt/archives
+COPY ${AZBRIDGE} ${ARCHIVE_DIR}/${AZBRIDGE}
+RUN dpkg -i ${ARCHIVE_DIR}/${AZBRIDGE} && \
+   rm ${ARCHIVE_DIR}/${AZBRIDGE}
+
+WORKDIR /etc
+
+# backup config
+RUN cp rsyslog.conf rsyslog.conf.orig && \
+   cp pam.d/sshd pam.d/sshd.orig && \
+   cp ssh/sshd_config ssh/sshd_config.orig
+
+# install config
+COPY etc/rsyslog.conf rsyslog.conf
+COPY etc/pam.d/sshd pam.d/sshd
+COPY etc/ssh/sshd_config ssh/sshd_config

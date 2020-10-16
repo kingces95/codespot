@@ -1,0 +1,28 @@
+additional_properties: {}
+apiVersion: '2018-10-01'
+identity: null
+location: westus2
+name: mycontainer
+properties:
+  containers:
+  - name: mycontainer
+    properties:
+      environmentVariables: []
+      image: kingces95/githubtainer-debian
+      ports:
+      - port: 22
+        protocol: TCP
+      resources:
+        requests:
+          cpu: 1.0
+          memoryInGB: 1.5
+  ipAddress:
+    ip: 52.148.161.251
+    ports:
+    - port: 22
+      protocol: TCP
+    type: Public
+  osType: Linux
+  restartPolicy: Always
+tags: {}
+type: Microsoft.ContainerInstance/containerGroups

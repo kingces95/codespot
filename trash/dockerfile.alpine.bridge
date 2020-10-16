@@ -1,0 +1,21 @@
+
+ARG IMAGE=alpine
+ARG VARIANT=latest
+FROM ${IMAGE}:${VARIANT}
+LABEL maintainer "Chris King - https://github.com/kingces95"
+
+RUN apk add dpkg
+ARG AZBRIDGE
+COPY ${AZBRIDGE} ${AZBRIDGE}
+RUN apk add dpkg && \
+    dpkg --add-architecture amd64 && \
+    dpkg -i ${AZBRIDGE} && \
+    rm ${AZBRIDGE}
+
+ENTRYPOINT ["azbridge"]
+CMD [ \
+    "-R", "$name:$host:$port_name/$port", \
+    "-e", "sb://$namespace.servicebus.windows.net/", \
+    "-K", "$policy", \
+    "-k", "$(cat /mnt/key)" \
+]

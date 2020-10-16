@@ -1,0 +1,23 @@
+ARG IMAGE=mcr.microsoft.com/vscode/devcontainers/base
+ARG VARIANT=buster
+FROM ${IMAGE}:${VARIANT}
+LABEL maintainer "Chris King - https://github.com/kingces95"
+
+ARG AZBRIDGE
+COPY ${AZBRIDGE} ${AZBRIDGE}
+RUN dpkg -i ${AZBRIDGE} && \
+   rm ${AZBRIDGE}
+
+ENV name=
+ENV namespace=
+ENV host=
+ENV port=
+ENV portName=
+ENV policy=
+ENV key=
+
+CMD azbridge \
+   -R $name:$host:$portName/$port \
+   -e sb://$namespace.servicebus.windows.net/ \
+   -K $policy \
+   -k $key

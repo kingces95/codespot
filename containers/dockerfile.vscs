@@ -1,0 +1,19 @@
+ARG IMAGE=githubtainer-mysshd
+ARG VARIANT=latest
+FROM kingces95/${IMAGE}:${VARIANT}
+LABEL maintainer "Chris King - https://github.com/kingces95"
+ARG COMMIT
+ARG USER=vscode
+
+# download and extract vscode
+USER ${USER}
+COPY scripts/vscs-get* /tmp/scripts/
+WORKDIR /tmp/scripts
+RUN ./vscs-get-stable.sh ${COMMIT}
+
+# start sshd
+USER root
+COPY scripts/vscs-start* /tmp/scripts/
+ENV user=${USER}
+ENV commit=${COMMIT}
+ENTRYPOINT ./vscs-start-as.sh $user $commit && /usr/sbin/sshd -D -e

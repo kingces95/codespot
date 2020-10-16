@@ -1,0 +1,11 @@
+FROM node:12-alpine
+WORKDIR /app
+COPY package.json yarn.lock ./
+RUN yarn install --production
+COPY . .
+CMD ["node", "src/index.js"]
+
+# docker build -t kingces95/getting-started .
+# docker run -d -p 3000:3000 --name demo kingces95/getting-started
+# docker-compose up -d
+# docker push kingces95/getting-started

@@ -1,0 +1,39 @@
+ARG IMAGE=mcr.microsoft.com/vscode/devcontainers/base
+ARG VARIANT=buster
+FROM ${IMAGE}:${VARIANT}
+LABEL maintainer "Chris King - https://github.com/kingces95"
+ARG ROOT_KEY
+ARG VSCODE_KEY
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+   apt-get -y install --no-install-recommends \
+      socat \
+      sshpass \
+      openssh-server \
+      openssh-client && \
+   apt-get autoremove -y && \
+   apt-get clean -y && \
+   rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=dialog
+
+# see https://docs.docker.com/engine/examples/running_ssh_service/
+RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
+
+# initialize the service (e.g. mkdir -p /var/run/sshd)
+RUN service ssh start && \
+    service ssh stop
+
+# enable password login
+# RUN echo "root:password" | chpasswd
+# RUN sed -i s/#PermitRootLogin.*/PermitRootLogin\ yes/ /etc/ssh/sshd_config
+
+# enable key login
+USER vscode
+RUN mkdir -p ~/.ssh && echo ${VSCODE_KEY} > ~/.ssh/authorized_keys
+
+USER root
+RUN mkdir -p ~/.ssh && echo ${ROOT_KEY} > ~/.ssh/authorized_keys
+
+ENTRYPOINT ["/usr/sbin/sshd"]
+CMD ["-D", "-e"]

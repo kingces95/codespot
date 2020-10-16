@@ -1,0 +1,11 @@
+ARG IMAGE=alpine
+ARG VARIANT=latest
+FROM ${IMAGE}:${VARIANT}
+LABEL maintainer "Chris King - https://github.com/kingces95"
+
+RUN apk add --no-cache openssh
+RUN sed -i s/#PermitRootLogin.*/PermitRootLogin\ yes/ /etc/ssh/sshd_config && \
+ echo "root:root" | chpasswd
+
+ENTRYPOINT ["/usr/sbin/sshd"]
+CMD ["-D", "-e"]
