@@ -27,7 +27,7 @@ if [[ $# -eq 0 ]]; then help; fi
 command=$1; shift
 
 case "$command" in
-install) . $(thisDir)/install/index.sh $@ ;;
+install) . $(thisDir)/install.sh $@ ;;
 server) . $(thisDir)/server/index.sh $@ ;;
 *) help; exit 1
 esac

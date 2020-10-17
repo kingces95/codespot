@@ -12,16 +12,16 @@ do
         param="${1/--/}"
         shift
 
-        if [[ $# -eq 0 || $1 == "--"* ]]
-        then
-            continue
-        fi
-
         # foo-bar -> fooBar
         param=$(echo $param | awk -F"-" '{for(i=2;i<=NF;i++){$i=toupper(substr($i,1,1)) substr($i,2)}} 1' OFS="")
-       
-        declare $param="$1"
-        shift 
+
+        if [[ $# -eq 0 || $1 == "--"* ]]
+        then
+            export $param=true
+        else        
+            export $param="$1"
+            shift 
+        fi
 
         # echo $param=${!param}
     else
