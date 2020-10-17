@@ -51,19 +51,26 @@ azBridgeRemotePort=22
 # bridge cli
 azBridgeRepoDir=/Users/Setup/git/azure-relay-bridge
 azBridgeRepoReleaseOsx64Dir=$azBridgeRepoDir/src/azbridge/bin/Release/AnyCPU/netcoreapp3.0/osx-x64
-alias azbridge="dotnet $azBridgeRepoReleaseOsx64Dir/azbridge.dll $*"
+# alias azbridge="dotnet $azBridgeRepoReleaseOsx64Dir/azbridge.dll $*"
 azBridgeLocalIp=127.0.0.1
 azBridgeLocalPort=2233
 
 # sshd
-azSshd=my-sshd
-azSshdImage=mysshd
+azSshd=sshd
+azSshdImage=sshd
 azSshdDockerfile=dockerfile.sshd
 azSshdImageBase=mcr.microsoft.com/vscode/devcontainers/base
 azSshdImageBaseVariant=buster
-azSshdDebugPort=2222
-azSshdRootKey=$(cat id/root/rsa.pub)
-azSshdVscodeKey=$(cat id/vscode/rsa.pub)
+
+# sshd
+azMySshd=my-sshd
+azMySshdImage=mysshd
+azMySshdDockerfile=dockerfile.sshd
+azMySshdImageBase=mcr.microsoft.com/vscode/devcontainers/base
+azMySshdImageBaseVariant=buster
+azMySshdDebugPort=2222
+# azMySshdRootKey=$(cat id/root/rsa.pub)
+# azMySshdVscodeKey=$(cat id/vscode/rsa.pub)
 
 # vscode server
 azVscs=my-vscs
@@ -109,6 +116,10 @@ docker logs $azWeb
 docker rm -f $azWeb
 
 # docker images
+docker build -t $azSshdImage . -f $azSshdDockerfile
+docker tag $azSshdImage $azDockerHubName/$azSshdImage
+docker push $azDockerHubName/$azSshdImage
+
 azEcho=my-echo
 azEchoImage=myecho
 azEchoDockerfile=dockerfile.echo
@@ -135,14 +146,14 @@ docker build -t $azBridgeImage . \
 docker tag $azBridgeImage $azDockerHubName/githubtainer-$azBridgeImage
 docker push $azDockerHubName/githubtainer-$azBridgeImage
 
-docker build -t $azSshdImage . \
-    -f $azSshdDockerfile \
-    --build-arg IMAGE=$azSshdImageBase \
-    --build-arg VARIANT=$azSshdImageBaseVariant \
-    --build-arg ROOT_KEY="$azSshdRootKey" \
-    --build-arg VSCODE_KEY="$azSshdVscodeKey"
-docker tag $azSshdImage $azDockerHubName/githubtainer-$azSshdImage
-docker push $azDockerHubName/githubtainer-$azSshdImage
+docker build -t $azMySshdImage . \
+    -f $azMySshdDockerfile \
+    --build-arg IMAGE=$azMySshdImageBase \
+    --build-arg VARIANT=$azMySshdImageBaseVariant \
+    --build-arg ROOT_KEY="$azMySshdRootKey" \
+    --build-arg VSCODE_KEY="$azMySshdVscodeKey"
+docker tag $azMySshdImage $azDockerHubName/githubtainer-$azMySshdImage
+docker push $azDockerHubName/githubtainer-$azMySshdImage
 
 docker build -t $azVscsImage . \
     -f $azVscsDockerfile \
@@ -157,34 +168,34 @@ docker rm $(docker ps -aq) -f
 [ $(docker ps -a --filter name=$azContainer -q) ] && docker rm $azContainer --force
 
 # start sshd
-docker rm -f $azSshd
+docker rm -f $azMySshd
 docker run -d \
-    --name $azSshd \
-    -p $azSshdDebugPort:22 \
-    $azSshdImage
+    --name $azMySshd \
+    -p $azMySshdDebugPort:22 \
+    $azMySshdImage
 
-docker exec -it $azSshd bash
-ssh-keyscan -p $azSshdDebugPort -t rsa localhost > known_hosts
-ssh-copy-id -i id/root/rsa -p $azSshdDebugPort root@localhost -o UserKnownHostsFile=known_hosts
-ssh -i id/root/rsa -o UserKnownHostsFile=known_hosts -p $azSshdDebugPort root@localhost
-ssh -i id/vscode/rsa -o UserKnownHostsFile=known_hosts -p $azSshdDebugPort vscode@localhost
+docker exec -it $azMySshd bash
+ssh-keyscan -p $azMySshdDebugPort -t rsa localhost > known_hosts
+ssh-copy-id -i id/root/rsa -p $azMySshdDebugPort root@localhost -o UserKnownHostsFile=known_hosts
+ssh -i id/root/rsa -o UserKnownHostsFile=known_hosts -p $azMySshdDebugPort root@localhost
+ssh -i id/vscode/rsa -o UserKnownHostsFile=known_hosts -p $azMySshdDebugPort vscode@localhost
 ssh -o ProxyCommand="bash -c ' \
     if ! test -z \$(docker ps -a --filter name=%h -q); then docker rm %h --force; fi && \
     docker run -d --name %h -p %p:22 %h && \
     sleep 2 && \
     nc localhost %p'" \
-    -i id/root/rsa -o UserKnownHostsFile=known_hosts root@mysshd -p $azSshdDebugPort
+    -i id/root/rsa -o UserKnownHostsFile=known_hosts root@mysshd -p $azMySshdDebugPort
 
 # start vscs
 docker rm -f $azVscs
 docker run -d \
     --name $azVscs \
-    -p $azSshdDebugPort:22 \
+    -p $azMySshdDebugPort:22 \
     --network myNetwork \
     $azVscsImage
 
-ssh-keyscan -p $azSshdDebugPort -t rsa localhost >> known_hosts
-ssh -i id/vscode/rsa -o UserKnownHostsFile=known_hosts -p $azSshdDebugPort vscode@localhost
+ssh-keyscan -p $azMySshdDebugPort -t rsa localhost >> known_hosts
+ssh -i id/vscode/rsa -o UserKnownHostsFile=known_hosts -p $azMySshdDebugPort vscode@localhost
 
 # start bridge
 echo $azRelayPolicyAllKey > relay_key

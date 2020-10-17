@@ -2,10 +2,10 @@
 help() (
 cat << EndOfMessage
 Group
-    resourceGroup   : ${DocResourceGroup}
+    create          : ${DocResourceId}
 
 Commands:
-    create          : ${DocResourceGroupCreate}
+    create          : ${DocResourceIdCreate}
 EndOfMessage
     exit 1
 )
@@ -14,6 +14,6 @@ if [[ $# -eq 0 ]]; then help; fi
 command=$1; shift
 
 case "$command" in
-create) . $dir/resourceGroup/create.sh $@ ;;
+create) . $(thisDir)/create.sh $@ ;;
 *) help
 esac

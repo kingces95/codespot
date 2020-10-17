@@ -2,8 +2,6 @@ ARG IMAGE=mcr.microsoft.com/vscode/devcontainers/base
 ARG VARIANT=buster
 FROM ${IMAGE}:${VARIANT}
 LABEL maintainer "Chris King - https://github.com/kingces95"
-ARG ROOT_KEY
-ARG VSCODE_KEY
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
@@ -29,11 +27,11 @@ RUN service ssh start && \
 # RUN sed -i s/#PermitRootLogin.*/PermitRootLogin\ yes/ /etc/ssh/sshd_config
 
 # enable key login
-USER vscode
-RUN mkdir -p ~/.ssh && echo ${VSCODE_KEY} > ~/.ssh/authorized_keys
+# USER vscode
+# RUN mkdir -p ~/.ssh && echo ${VSCODE_KEY} > ~/.ssh/authorized_keys
 
-USER root
-RUN mkdir -p ~/.ssh && echo ${ROOT_KEY} > ~/.ssh/authorized_keys
+# USER root
+# RUN mkdir -p ~/.ssh && echo ${ROOT_KEY} > ~/.ssh/authorized_keys
 
 ENTRYPOINT ["/usr/sbin/sshd"]
 CMD ["-D", "-e"]

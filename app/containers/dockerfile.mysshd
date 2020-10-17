@@ -1,0 +1,16 @@
+ARG IMAGE=kingces95/sshd
+ARG VARIANT=latest
+FROM ${IMAGE}:${VARIANT}
+LABEL maintainer "Chris King - https://github.com/kingces95"
+ARG ROOT_KEY
+ARG VSCODE_KEY
+
+# enable key login
+USER vscode
+RUN mkdir -p ~/.ssh && echo ${VSCODE_KEY} > ~/.ssh/authorized_keys
+
+# USER root
+RUN mkdir -p ~/.ssh && echo ${ROOT_KEY} > ~/.ssh/authorized_keys
+
+ENTRYPOINT ["/usr/sbin/sshd"]
+CMD ["-D", "-e"]

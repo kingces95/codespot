@@ -15,19 +15,10 @@ function uptime() (
     echo "T+$(pad $hours):$(pad $minutes):$(pad $seconds)"
 )
 
-azLog() {
-    log $ az $*
-    az $@
+function thisFile() {
+    echo ${BASH_SOURCE[1]}
 }
 
-azTsv() (
-    azLog $@ --output tsv
-)
-
-azx() (
-    $dir/.index.sh $@
-)
-
-azSubscriptionId() (
-    azTsv account show --query id
-)
+function thisDir() {
+    echo $(dirname ${BASH_SOURCE[1]})
+}

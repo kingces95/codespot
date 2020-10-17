@@ -10,11 +10,11 @@ Resource Id Arguments
     --resource-group        : Name of resource group.
     --type                  : The resource type (Ex: 'Microsoft.Provider/resC').
     --name                  : The resource name. (Ex: myC). If ommitted, type must 
-                            be 'Microsoft.Resources/ResourceGroups'.
+                            be 'Microsoft.Resources/resourceGroups'.
 EndOfMessage
 )
 
-. $dir/.prolog.sh
+. $prolog
 
 : ${id=}
 if [[ ! -z "$id" ]]

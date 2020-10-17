@@ -18,8 +18,8 @@ if [[ $# -eq 0 ]]; then help; fi
 command=${1=}; shift
 
 case "$command" in
-id) . $dir/resource/id/.index.sh $@ ;;
-test) . $dir/resource/test.sh $@ ;;
-wait) . $dir/resource/wait.sh $@ ;;
+id) . $(thisDir)/id/index.sh $@ ;;
+test) . $(thisDir)/test.sh $@ ;;
+wait) . $(thisDir)/wait.sh $@ ;;
 *) help
 esac

@@ -1,6 +1,6 @@
-ARG IMAGE=githubtainer-mysshd
+ARG IMAGE=kingces95/sshd
 ARG VARIANT=latest
-FROM kingces95/${IMAGE}:${VARIANT}
+FROM ${IMAGE}:${VARIANT}
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" \

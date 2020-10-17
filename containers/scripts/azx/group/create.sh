@@ -2,7 +2,7 @@
 help() (
 cat << EndOfMessage
 Command
-    app resourceGroup create : ${DocResourceGroupCreate}
+    app group create : ${DocGroupCreate}
 
 Arguments
     --name                  : Name of resource group.
@@ -11,7 +11,7 @@ Arguments
 EndOfMessage
 )
 
-. $dir/.prolog.sh
+. $prolog
     
 : ${name:?}
 : ${location:?}
