@@ -5,28 +5,31 @@
 
 # simplify making recursive calls
 azx() (
-    $(thisFile) $@
+  $(thisFile) $@
 )
 
 # log arguments
 log $ azx $*
 
 help() (
-cat << EndOfMessage
+cat << END
 Group
-    app             : ${DocApp}
+  app             : ${DocApp}
 
 Subgroups:
-    resource        : ${DocResource}
-EndOfMessage
-    exit 1
+  resource        : ${DocResource}
+END
 )
 
-if [[ $# -eq 0 ]]; then help; fi
-command=$1; shift
+if [[ $# -eq 0 ]]; then 
+  set -- '--help'
+fi
+
+command=$1
+shift
 
 case "$command" in
-resource) . $(thisDir)/resource/index.sh $@ ;;
-group) . $(thisDir)/group/index.sh $@ ;;
-*) help; exit 1
+  resource) . $(thisDir)/resource/index.sh $@ ;;
+  group) . $(thisDir)/group/index.sh $@ ;;
+  *) helpAndExit
 esac

@@ -7,13 +7,12 @@ Group
 Commands:
     create          : ${DocResourceIdCreate}
 EndOfMessage
-    exit 1
 )
 
-if [[ $# -eq 0 ]]; then help; fi
+if [[ $# -eq 0 ]]; then helpAndExit; fi
 command=$1; shift
 
 case "$command" in
 create) . $(thisDir)/create.sh $@ ;;
-*) help
+*) helpAndExit
 esac

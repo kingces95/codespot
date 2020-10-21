@@ -11,15 +11,14 @@ Commands:
     wait            : ${DocResourceWait}
     test            : ${DocResourceTest}
 EndOfMessage
-    exit 1
 )
 
-if [[ $# -eq 0 ]]; then help; fi
+if [[ $# -eq 0 ]]; then helpAndExit; fi
 command=${1=}; shift
 
 case "$command" in
 id) . $(thisDir)/id/index.sh $@ ;;
 test) . $(thisDir)/test.sh $@ ;;
 wait) . $(thisDir)/wait.sh $@ ;;
-*) help
+*) helpAndExit
 esac

@@ -14,7 +14,7 @@ Resource Id Arguments
 EndOfMessage
 )
 
-. $prolog
+declareArgs $@
 
 : ${id=}
 if [[ ! -z "$id" ]]

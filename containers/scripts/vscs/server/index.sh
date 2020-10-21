@@ -2,10 +2,10 @@
 help() (
 cat << EndOfMessage
 Group
-    group           : ${DocGroup}
+    server          : ${DocServer}
 
 Commands:
-    create          : ${DocGroupCreate}
+    start           : ${DocServerStart}
 EndOfMessage
 )
 
@@ -13,6 +13,6 @@ if [[ $# -eq 0 ]]; then helpAndExit; fi
 command=$1; shift
 
 case "$command" in
-create) . $(thisDir)/create.sh $@ ;;
+start) . $(thisDir)/start.sh $@ ;;
 *) helpAndExit
 esac

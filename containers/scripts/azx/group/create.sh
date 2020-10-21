@@ -11,7 +11,7 @@ Arguments
 EndOfMessage
 )
 
-. $prolog
+declareArgs $@
     
 : ${name:?}
 : ${location:?}

@@ -19,7 +19,7 @@ Arguments
 EndOfMessage
 )
 
-. $prolog
+declareArgs $@
 
 : ${value:?}
 : ${query:?}

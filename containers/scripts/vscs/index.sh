@@ -4,12 +4,18 @@
 . $(thisDir)/util.sh
 
 # simplify making recursive calls
-azx() (
-    $(thisFile) $@
-)
+# self() (
+#     $(thisFile) $@
+# )
+
+# selfAs() (
+#     user=${1:?}
+#     shift
+#     sudo su $user -c "$(thisFile) $*"
+# )
 
 # log arguments
-log $ azx $*
+log $ vscs $*
 
 help() (
 cat << EndOfMessage
@@ -20,14 +26,13 @@ Subgroups:
     install         : ${DocInstall}
     server          : ${DocServer}
 EndOfMessage
-    exit 1
 )
 
-if [[ $# -eq 0 ]]; then help; fi
+if [[ $# -eq 0 ]]; then helpAndExit; fi
 command=$1; shift
 
 case "$command" in
 install) . $(thisDir)/install.sh $@ ;;
 server) . $(thisDir)/server/index.sh $@ ;;
-*) help; exit 1
+*) helpAndExit
 esac

@@ -18,7 +18,7 @@ Arguments
 EndOfMessage
 )
 
-. $prolog
+declareArgs $@
 
 : ${name=}
 : ${resourceGroup=}
