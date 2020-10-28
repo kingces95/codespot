@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 . $(dirname $BASH_SOURCE)/pkg/cli/index.sh
 . $(thisDir)/constants.sh
 . $(thisDir)/util.sh

@@ -1,0 +1,299 @@
+#!/usr/bin/env bash
+set -x
+readonly CLI_CMD=${CLI_CMD:=$0}
+readonly CLI_CMD_NAME="${0##*/}"
+readonly CLI_CMD_DIR=$(dirname ${CLI_CMD})
+
+readonly CLI_SOURCE_DIR=$(dirname ${BASH_SOURCE})
+
+(
+    cd "${CLI_CMD_DIR}"
+    "${CLI_SOURCE_DIR}"/find/groups "$@"
+)
+exit
+
+readonly LOG_TAIL=5
+readonly LOG_FILE='log.txt'
+
+# reflection
+cli::this_dir() { echo $(dirname ${BASH_SOURCE[1]}); }
+cli::this_file() { echo "${BASH_SOURCE[1]}"; }
+cli::caller_file() { echo "${BASH_SOURCE[2]}"; }
+cli::caller_dir() { echo $(dirname ${BASH_SOURCE[2]}); }
+
+# set opts
+cli::opts::set_fail_if_command_fails() { set -e; }
+cli::opts::set_fail_on_unset_expansion() { set -u; }
+cli::opts::set_debugging() { set -x; }
+cli::opts::unset_debugging() { set +x; }
+
+# profiling
+cli::pad() { printf "%02d" "$1"; }
+cli::up_time() {
+    local duration=SECONDS
+    local seconds=$((duration % 60))
+    local minutes=$((duration / 60))
+    local hours=$((duration / (60 * 60)))
+    echo "T+$(cli::pad ${hours}):$(cli::pad ${minutes}):$(cli::pad ${seconds})"
+}
+
+# logging
+cli::log() { >&2 echo $@; }
+
+cli::log_callstack() {
+    local skip_frames=${1-0}
+
+    cli::log CALLSTACK: 
+    cli::callstack \
+        | cli::skip ${skip_frames} \
+        | cli::indent 1>&2
+}
+
+# exiting
+cli::die() { 
+    cli::log "ERROR:" $@
+    cli::log_callstack
+    exit 1
+}
+
+cli::if_tty_then_redirect_to_file() {
+    local file_descriptor="${1?}"
+    local file="${2?}"
+
+    if [[ -t ${file_descriptor} ]]; then
+        # clear
+        : > "${file}"
+
+        # redirect
+        eval "exec ${file_descriptor}>> ${file}"
+    fi
+}
+
+# streaming
+cli::indent() ( sed 's/^/    /'; )
+cli::unindent() ( sed 's/^    //'; )
+cli::skip() ( tail -n $(( $1 + 1 )); )
+
+cli::split() (
+    while (( $# > 0 )); do
+        echo "$1"
+        shift
+    done
+)
+
+cli::callstack() (
+    i=0
+    while caller $i; do 
+        i=$(( i + 1 ))
+    done 2>&1
+)
+
+cli::on_exit() {
+    local exit_code=$?
+
+    if (( exit_code == 0 )); then
+        return
+    fi
+
+    log_callstack 1
+
+    echo ERROR: Exited with non-zero code: "${exit_code}"
+    echo "$ cat ${LOG_FILE} | tail -n ${LOG_TAIL}"
+    cat "${LOG_FILE}" \
+        | tail -n "${LOG_TAIL}" \
+        | cli::indent
+
+    if $help_on_exit; then
+        echo "$(help)"
+        exit
+    fi
+
+    return $exit_code
+}   
+
+cli::is_function() {
+    local name=${1?}
+
+    if [[ "$(type -t "${name}")" == 'function' ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+cli::assert_is_function() {
+    local name=${1?}
+
+    if ! cli::is_function ${name}; then
+        cli::die "function '${name}' not defined."
+    fi
+}
+
+cli::get_arg_variable_name() {
+    local name="$1"
+    name="${1/--/}"
+    name="${name^^}"
+    name="ARG_${name/-/_}"
+    echo $name
+}
+
+cli::declare_fullname() {
+    declare -ga CLI_FULLNAME=()
+
+    while (( $# > 0 )); do
+        if [[ "$1" == $ARG_NAME_GLOB ]]; then
+            break
+        fi
+        
+        CLI_FULLNAME+=( "${1/-/_}" )
+        shift
+    done
+}
+
+cli::source_command() {
+    # build script path. eg. '( 'my_dir' 'my_cmd' ) -> 'my_dir/my_cmd.sh'
+    local path=".$( printf "/%s" "$@" ).sh"
+
+    if [[ ! -f "${path}" ]]; then
+        local help_path="$(cli::probe_for_script "$@")"
+        cli::die Help ::${path} ::${help_path} :: ...
+    fi
+
+    . "${path}"
+}
+
+cli::probe_for_script() {
+    local parts=( "$@" )
+
+    local path='.'
+    for i in "${parts[@]}"; do
+        next_path="${path}/${i}"
+
+        if [[ -d "${next_path}" ]]; then
+            path="${next_path}"
+
+        elif [[ -f "${next_path}.sh" ]]; then
+            path="${next_path}.sh"
+
+        else
+            break
+        fi
+    done
+
+    echo "${path}"
+}
+
+cli::is_set() {
+    declare -p $1 >/dev/null 2>&1
+}
+
+cli::declare() {
+    local name
+    local value
+    while (( $# > 0 )); do
+
+        if [[ "$1" == $ARG_NAME_GLOB ]]; then
+
+            # assert variable name expected
+            name="$(cli::get_arg_variable_name "$1")"
+            if ! cli::is_set ${name}; then
+                cli::die \"$1\" unrecognized argument.
+            fi
+            shift
+
+            # if argument followed another argument, it's a flag, otherwise it's a key/value
+            if (( $# == 0 )) || [[ "$1" == $ARG_NAME_GLOB ]]; then
+                value=true
+            else
+                value="$1"
+                shift 
+            fi
+
+            # publish value
+            declare -g "${name}"="${value}"
+
+            # echo ${name}=${!name}
+        else
+            cli::die "Expected named argument, but got positional argument '$1'"
+        fi
+    done
+}
+
+cli::main() {
+    # shell opt
+    cli::opts::set_fail_if_command_fails
+    cli::opts::set_fail_on_unset_expansion
+
+    shopt -s extglob
+    shopt -s globstar
+
+    # if stderr is tty, point it at a log file instead. This way, 
+    # stdout can be used exclusively to report status, as opposed
+    # to interleaving status with logging spew.
+    cli::if_tty_then_redirect_to_file 2 "${LOG_FILE}"
+
+    # if exit with non-zero, then dump the last few lines of log
+    # messages as stdout has been reserved for operational status.
+    trap cli::on_exit EXIT
+
+    # log this command and its arguments
+    cli::log $ "${CLI_CMD}" "$@"
+
+    # if no arguments, then push '--help'
+    if (( $# == 0 )); then
+        set -- '--help'
+    fi
+
+    exit 
+
+    # positional arguments encode parts of the command's name
+    # e.g. '$ cmd my-dir my-cmd --my-arg myValue' -> CLI_FULLNAME=( 'my_dir' 'my_cmd' )
+    cli::declare_fullname "$@"
+    shift ${#CLI_FULLNAME[@]}
+
+    # source the script to define 'description', 'help', 'validate', and 'main' 
+    cli::source_command "${CLI_CMD_DIR}" "${CLI_FULLNAME[@]}"
+    cli::assert_is_function 'main'
+    cli::assert_is_function 'help'
+    cli::assert_is_function 'description'
+
+    # tokenize and parse help and load the harvested metadata
+    # - declare optional variables
+    # - assign default values
+    # - publish an array of required variable names as CLI_ARGS_REQUIRED
+    cli::tokenize < <(help) \
+        | cli::parse \
+        | cli::load
+
+    # declare variables found in the command line
+    #   e.g. '$ cmd --my-arg myValue' -> ARG_MY_ARG='myValue'
+    # error if a variable is unknown
+    #   e.g. '$ cmd --my-bad' -> ERROR: '--my-bad' not recognized.
+    cli::declare "$@"
+
+    # error if a required variable is missing
+    cli::require < <(cli::split "${CLI_ARGS_REQUIRED[@]}")
+
+    # implement '--help'
+    if ${ARG_HELP}; then
+        echo "$(help)"
+        exit
+    fi
+
+    # implement '-t-run-as'
+    if [[ -n "${ARG_RUN_AS}" ]] && [[ "${ARG_RUN_AS}" != "$(whoami)" ]]; then
+        sudo su "${ARG_RUN_AS}" < <(printf "\"%s\" " "${BASH_SOURCE}" "$@"; echo)
+        exit
+    fi
+
+    # implement '--debug'
+    cli::prolog() { if $ARG_DEBUG; then cli::opts::set_debugging; fi; }
+    cli::epilog() { if $ARG_DEBUG; then cli::opts::unset_debugging; fi; }
+
+    # if 'validate' defined, then validate, and dump help on failures
+    if cli::is_function 'validate'; then
+        cli::prolog; validate; cli::epilog
+    fi
+
+    cli::prolog; main; cli::epilog
+}

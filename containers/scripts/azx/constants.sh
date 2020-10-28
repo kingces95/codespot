@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 TypeResourceGroup=Microsoft.Resources/resourceGroups
 
 DocApp="All application commands."

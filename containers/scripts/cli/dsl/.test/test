@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+main () (
+    set -euf -o pipefail
+
+    local thisDir="$(dirname ${BASH_SOURCE})"
+    . "${thisDir}/../../../assert/index.sh"
+
+    cd "${thisDir}"
+
+    local dslDir=".."
+    local helpDir="${dslDir}/help"
+    local argsDir="${dslDir}/args"
+    local help_tokenize="${helpDir}/tokenize"
+    local help_parse="${helpDir}/parse"
+    local help_aliases="${helpDir}/aliases"
+    local args_tokenize="${argsDir}/tokenize"
+    local args_parse="${argsDir}/parse"
+
+    cat ./help.txt \
+        | "${help_tokenize}" \
+        | assert::pipe_eq \
+            'TOKEN_ARG_NAME 5 1 run-as' \
+            'TOKEN_REQUIRED 5 2' \
+            'TOKEN_DEFAULT 6 3' \
+            'TOKEN_WORD 6 4 $(whoami)' \
+            'TOKEN_ARG_NAME 7 1 fruit' \
+            'TOKEN_DEFAULT 7 5' \
+            'TOKEN_WORD 7 6 banana' \
+            'TOKEN_ALLOWED 7 7' \
+            'TOKEN_VALUES 8 1' \
+            'TOKEN_WORD 8 2 orange' \
+            'TOKEN_WORD 8 3 banana' \
+            'TOKEN_ARG_NAME 11 1 debug' \
+            'TOKEN_ARG_ALIAS 11 2 d' \
+            'TOKEN_REQUIRED 11 3' \
+            'TOKEN_ARG_NAME 12 1 help' \
+            'TOKEN_ARG_ALIAS 12 2 h' \
+            'TOKEN_EOF 16 6' 
+
+    cat ./help.txt \
+        | "${help_tokenize}" \
+        | "${help_parse}" \
+        | sort \
+        | assert::pipe_eq \
+            'debug 0 PRODUCTION_ARG_NAME' \
+            'debug 1 PRODUCTION_ARG_ALIAS d' \
+            'debug 4 PRODUCTION_REQUIRED' \
+            'fruit 0 PRODUCTION_ARG_NAME' \
+            'fruit 2 PRODUCTION_DEFAULT banana' \
+            'fruit 5 PRODUCTION_ALLOWED_VALUE banana' \
+            'fruit 5 PRODUCTION_ALLOWED_VALUE orange' \
+            'help 0 PRODUCTION_ARG_NAME' \
+            'help 1 PRODUCTION_ARG_ALIAS h' \
+            'run-as 0 PRODUCTION_ARG_NAME' \
+            'run-as 2 PRODUCTION_DEFAULT $(whoami)' \
+            'run-as 4 PRODUCTION_REQUIRED'
+
+    cat ./help.txt \
+        | "${help_tokenize}" \
+        | "${help_parse}" \
+        | "${help_aliases}" \
+        | assert::pipe_eq \
+            'debug d' \
+            'help h'
+
+    cat ./help.txt \
+        | "${help_tokenize}" \
+        | "${help_parse}" \
+        | "${help_aliases}" \
+        | "${args_tokenize}" \
+            group cmd \
+            --run-as myuser \
+            --fruit banana \
+            -h --debug \
+        | assert::pipe_eq \
+            'TOKEN_ARG_VALUE 1 1 group' \
+            'TOKEN_ARG_VALUE 1 2 cmd' \
+            'TOKEN_ARG_NAME 1 3 run-as' \
+            'TOKEN_ARG_VALUE 1 4 myuser' \
+            'TOKEN_ARG_NAME 1 5 fruit' \
+            'TOKEN_ARG_VALUE 1 6 banana' \
+            'TOKEN_ARG_NAME 1 7 help' \
+            'TOKEN_ARG_NAME 1 8 debug' \
+            'TOKEN_EOF 1 9'
+
+    cat ./help.txt \
+        | "${help_tokenize}" \
+        | "${help_parse}" \
+        | "${help_aliases}" \
+        | "${args_tokenize}" \
+        | "${args_parse}" \
+        | sort \
+        | assert::pipe_eq \
+            '. 8 PRODUCTION_CMD_DIR .' \
+
+    cat ./help.txt \
+        | "${help_tokenize}" \
+        | "${help_parse}" \
+        | "${help_aliases}" \
+        | "${args_tokenize}" \
+            bad-news \
+        | "${args_parse}" \
+        | sort \
+        | assert::pipe_eq \
+            '. 9 PRODUCTION_CMD_MISSING .' \
+
+    cat ./help.txt \
+        | "${help_tokenize}" \
+        | "${help_parse}" \
+        | "${help_aliases}" \
+        | "${args_tokenize}" \
+            group cmd \
+            --run-as myuser \
+            --fruit banana \
+            -h --debug \
+        | "${args_parse}" \
+        | sort \
+        | assert::pipe_eq \
+            '. 7 PRODUCTION_CMD_SOURCE ./group/cmd' \
+            'debug 0 PRODUCTION_ARG_NAME' \
+            'debug 3 PRODUCTION_ARG_VALUE true' \
+            'fruit 0 PRODUCTION_ARG_NAME' \
+            'fruit 3 PRODUCTION_ARG_VALUE banana' \
+            'help 0 PRODUCTION_ARG_NAME' \
+            'help 3 PRODUCTION_ARG_VALUE true' \
+            'run-as 0 PRODUCTION_ARG_NAME' \
+            'run-as 3 PRODUCTION_ARG_VALUE myuser'
+)
+
+main "$@"

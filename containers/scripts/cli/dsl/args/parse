@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/../parse.sh
+
+main() {
+    local readonly resolve=$(dirname ${BASH_SOURCE})/resolve
+
+    ERROR() {
+        dsl::die "Error while parsing command line :: \
+            word ${word} :: \
+            Expected \"$1\", got \"${token_name}\" :: \
+            \"${identifier}\"."
+    }
+
+    START() {
+        ARGUMENTS
+    }
+
+    ARGUMENTS() {
+        dsl::read_token
+        ARGUMENTS_POSITIONAL
+        ARGUMENTS_NAMED
+    }
+
+    ARGUMENTS_POSITIONAL() {
+        local path='.'
+        local last_path
+        local resolution=${PRODUCTION_CMD_DIR}
+
+        while (( resolution == PRODUCTION_CMD_DIR && \
+                 token != TOKEN_EOF && \
+                 token != TOKEN_ARG_NAME )); do
+
+            if (( token != TOKEN_ARG_VALUE )); then
+                ERROR 'TOKEN_ARG_VALUE'
+            fi
+            
+            last_path="${path}"
+            path="${last_path}/${identifier}"
+            resolution=$(${resolve} "${path}")
+            resolution=${!resolution}
+
+            dsl::read_token
+        done
+
+        case ${resolution} in
+            ${PRODUCTION_CMD_SOURCE}) 
+                dsl::yield ${PRODUCTION_CMD_SOURCE} ${path}
+                ;;
+
+            ${PRODUCTION_CMD_DIR}) 
+                dsl::yield ${PRODUCTION_CMD_DIR} ${path}
+                if (( token != TOKEN_EOF)); then
+                    ERROR TOKEN_EOF
+                fi
+                exit ;;
+
+            ${PRODUCTION_CMD_MISSING}) 
+                dsl::yield ${PRODUCTION_CMD_MISSING} ${last_path}
+                exit ;;
+        esac
+    }
+
+    ARGUMENTS_NAMED() {
+        while (( token != TOKEN_EOF )); do
+
+            if (( token == TOKEN_ARG_NAME )); then
+                NAME
+            else
+                ERROR 'TOKEN_ARG_NAME'
+            fi
+        done
+    }
+
+    NAME() {
+        arg_name=${identifier}
+        dsl::yield ${PRODUCTION_ARG_NAME}
+        dsl::read_token
+
+        VALUE
+    }
+
+    VALUE() {
+        if (( token == TOKEN_ARG_VALUE )); then
+            dsl::yield ${PRODUCTION_ARG_VALUE} ${identifier}
+            dsl::read_token
+        else
+            dsl::yield ${PRODUCTION_ARG_VALUE} 'true'
+        fi
+    }
+
+    START
+}
+
+main "$@"

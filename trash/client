@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+SVC_IN=63
+SVC_OUT=60
+
+lsof -p $$ | grep PIPE
+echo $1 >&${SVC_OUT}
+read line <&${SVC_IN}
+echo Result: "${line}"

@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+CLI_CMD="$0" cli "$@"

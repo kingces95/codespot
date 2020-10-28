@@ -1,0 +1,26 @@
+. $(dirname ${BASH_SOURCE})/../dsl.sh
+
+main() {
+    shopt -s extglob
+
+    yield() {
+        echo ${PRODUCTIONS[$1]}
+    }
+
+    path=$1
+
+    if [[ ! "${path##*/}" == +([a-zA-Z0-9_]) ]]; then
+        yield ${PRODUCTION_CMD_MISSING}
+
+    elif [[ -f "${path}" ]] && [[ -x "${path}" ]]; then
+        yield ${PRODUCTION_CMD_SOURCE}
+
+    elif [ -d "${path}" ]; then
+        yield ${PRODUCTION_CMD_DIR}
+
+    else
+        yield ${PRODUCTION_CMD_MISSING}
+    fi
+}
+
+main "$@"

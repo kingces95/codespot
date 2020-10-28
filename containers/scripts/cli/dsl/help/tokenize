@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/../tokenize.sh
+
+readonly LITERAL_TAB='    '
+readonly LITERAL_COLON=':'
+readonly LITERAL_DEFAULT='Default:'
+readonly LITERAL_ALLOWED='Allowed'
+readonly LITERAL_VALUES='values:'
+readonly LITERAL_REQUIRED='[Required]'
+
+main() {
+    local line
+    local word_number
+    local line_number=0
+
+    local in_argument_header=false
+    local in_argument_copy=false
+
+    yield() {
+        if $in_argument_header && ! $in_argument_copy; then
+            echo ${TOKENS[$1]} ${line_number} ${word_number} ${2-}
+        fi
+    }
+
+    while IFS= read line; do
+        line_number=$(( line_number + 1 ))
+        word_number=0
+
+        if [[ "${line}" =~ ^[a-zA-Z] ]]; then
+            word_number=1
+
+            if [[ "${line}" =~ 'Arguments' ]]; then
+                in_argument_header=true
+                in_argument_copy=false
+            else
+                in_argument_header=false
+            fi
+            continue
+        fi
+
+        words=( ${line} )
+        while (( word_number < ${#words[@]} )); do
+            word=${words[${word_number}]}
+            word_number=$(( word_number + 1 ))
+
+            if [[ "$word" == "${LITERAL_COLON}" ]]; then
+                in_argument_copy=true
+
+            elif [[ "${word}" == $ARG_NAME_GLOB ]] && \
+                    [[ "${line}" =~ ^"${LITERAL_TAB}${word}" ]]; then
+                in_argument_copy=false
+                yield ${TOKEN_ARG_NAME} "${word#--}"
+
+            elif [[ "${word}" == $ARG_ALIAS_GLOB ]]; then
+                yield ${TOKEN_ARG_ALIAS} "${word#-}"
+
+            elif [[ "${word}" == "${LITERAL_REQUIRED}" ]]; then
+                yield ${TOKEN_REQUIRED}
+
+            elif [[ "${word}" == "${LITERAL_DEFAULT}" ]]; then
+                in_argument_copy=false
+                yield ${TOKEN_DEFAULT}
+
+            elif [[ "${word}" == "${LITERAL_ALLOWED}" ]]; then
+                in_argument_copy=false
+                yield ${TOKEN_ALLOWED}
+
+            elif [[ "${word}" == "${LITERAL_VALUES}" ]]; then
+                in_argument_copy=false
+                yield ${TOKEN_VALUES}
+
+            elif [[ "${word}" == *, ]]; then
+                yield ${TOKEN_WORD} "${word/%,}"
+
+            elif [[ "${word}" == *. ]]; then
+                yield ${TOKEN_WORD} "${word/%.}"
+                in_argument_copy=true
+            fi
+        done
+    done
+
+    in_argument_copy=false
+    in_argument_header=true
+    line_number=$(( line_number + 1 ))
+    yield $TOKEN_EOF
+}
+
+main "$@"

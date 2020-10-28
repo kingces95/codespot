@@ -1,0 +1,15 @@
+Command
+    cmd banana slip : Slip on a banana.
+
+Arguments
+    --run-as     [Required] : Run as the specified user.
+                            --ignore-me -i. Default: \$(whoami).
+    --fruit                 : Run elevated. Default: banana. Allowed
+                            values: orange, banana. Stuff.
+
+Global Arguments
+    --debug -d   [Required] : Debug the script. --ignore-me -i.
+    --help -h               : Show this message and exit.
+
+Examples
+    --ignore-me -i [Required] : Default 10.

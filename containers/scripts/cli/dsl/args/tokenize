@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/../tokenize.sh
+
+main() {
+    local word
+    local word_number=0
+    local -A aliases
+    local name
+
+    while read name alias; do
+        aliases[$alias]=$name
+    done
+
+    yield() {
+        echo ${TOKENS[$1]} 1 ${word_number} ${2-''}
+    }
+
+    resolve_alias() {
+        local alias=$1
+        name=${aliases[${alias}]}
+        if [[ -z "${name}" ]]; then
+            dsl::die "Unexpected argument '-$1'."
+        fi
+    }
+
+    while (( $# > 0 )); do
+        word_number=$(( word_number + 1 ))
+        word=$1
+        shift
+
+        if [[ "${word}" == $ARG_NAME_GLOB ]]; then
+            name="${word#--}"
+            yield ${TOKEN_ARG_NAME} "${name}"
+
+        elif [[ "${word}" == $ARG_ALIAS_GLOB ]]; then
+            resolve_alias ${word#-}
+            yield ${TOKEN_ARG_NAME} "${name}"
+
+        else
+            yield ${TOKEN_ARG_VALUE} "${word}"
+        fi
+    done
+
+    word_number=$(( word_number + 1 ))
+    yield $TOKEN_EOF
+}
+
+main "$@"

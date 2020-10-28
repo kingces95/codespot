@@ -15,8 +15,70 @@ else
   BOLD=$(echo -en "\e[01m")
 fi
 
-assert::log() {
+assert::fail() {
   printf "${RED}✖ %s${NORMAL}\n" "$@" >&2
+}
+
+assert::pipe_eq() (
+  while read line; do
+    assert::eq "$line" "$1" "value from pipe != arg"
+    shift
+  done
+
+  if (( $# != 0 )); then
+    assert::fail "Unexpected end of pipe at '$1'"
+  fi
+)
+
+assert::pipe_eq_exact() (
+  IFS= assert::pipe_fields_eq "$@"
+)
+
+assert::fails() {
+  local statement="$1"
+  local msg=${2:-''}
+
+  if (eval $statement); then
+    assert::fail "\"$1\" succeeded, expected failure :: ${msg}"
+  fi
+}
+
+assert::file_does_not_exist() {
+  ! test -f "$1"
+  assert::ok "$2"
+}
+
+assert::non_empty_file_exists() {
+  test -s "$1"
+  assert::ok "$2"
+}
+
+assert::empty_file_exists() {
+  test -f "$1" && ! test -s "$1"
+  assert::ok "$2"
+}
+
+assert::file_exists() {
+  test -f "$1"
+  assert::ok "$2"
+}
+
+assert::ok() {
+  local exit_code=$?
+  local msg=${1:-''}
+
+  if (( exit_code != 0 )); then
+    assert::fail "Exited with ${exit_code} :: ${msg}"
+  fi
+}
+
+assert::returns() {
+  local statement="$1"
+  local expected_exit_code="$2"
+  local msg=${3:-''}
+
+  (eval $statement)
+  assert::ok
 }
 
 assert::eq() {
@@ -25,7 +87,7 @@ assert::eq() {
   local msg=${3:-''}
 
   if [[ "${expected}" != "${actual}" ]]; then
-    assert::log "${expected} == ${actual} :: ${msg}"
+    assert::fail "'${expected}' != '${actual}' :: ${msg}"
     return 1
   fi
 }
@@ -36,7 +98,7 @@ assert::match() {
   local msg=${3:-''}
 
   if [[ ! "${value}" =~ ${regex} ]]; then
-    assert::log "${value} =~ ${regex} :: ${msg}"
+    assert::fail "${value} =~ ${regex} :: ${msg}"
     return 1
   fi
 }
@@ -47,7 +109,7 @@ assert::not_eq() {
   local msg=${3:-''}
 
   if [[ "${expected}" == "${actual}" ]]; then
-    assert::log "${expected} != ${actual} :: ${msg}"
+    assert::fail "${expected} != ${actual} :: ${msg}"
     return 1
   fi
 }
@@ -61,13 +123,13 @@ assert::array_eq() {
   local expected_length=${#__expected[@]}
   local actual_length=${#__actual[@]}
   if (( expected_length != actual_length )); then
-    assert::log "array lengths differ :: ${expected_length} != ${actual_length} :: $msg"
+    assert::fail "array lengths differ :: ${expected_length} != ${actual_length} :: $msg"
     return 1
   fi
 
   for i in "${!__expected[@]}"; do 
     if [[ "${__expected[$i]}" != "${__actual[$i]}" ]]; then
-      assert::log "array values differ at index $i :: '${__expected[$i]}' != '${__actual[$i]}' :: $msg"
+      assert::fail "array values differ at index $i :: '${__expected[$i]}' != '${__actual[$i]}' :: $msg"
       return 1
     fi
   done
@@ -117,7 +179,7 @@ assert::contain() {
   if [ -z "${haystack##*$needle*}" ]; then
     return 0
   else
-    [ "${#msg}" -gt 0 ] && assert::log "$haystack doesn't contain $needle :: $msg" || true
+    [ "${#msg}" -gt 0 ] && assert::fail "$haystack doesn't contain $needle :: $msg" || true
     return 1
   fi
 }
@@ -138,7 +200,7 @@ assert::not_contain() {
   if [ "${haystack##*$needle*}" ]; then
     return 0
   else
-    [ "${#msg}" -gt 0 ] && assert::log "$haystack contains $needle :: $msg" || true
+    [ "${#msg}" -gt 0 ] && assert::fail "$haystack contains $needle :: $msg" || true
     return 1
   fi
 }
@@ -155,7 +217,7 @@ assert::gt() {
   if [[ "$first" -gt  "$second" ]]; then
     return 0
   else
-    [ "${#msg}" -gt 0 ] && assert::log "$first > $second :: $msg" || true
+    [ "${#msg}" -gt 0 ] && assert::fail "$first > $second :: $msg" || true
     return 1
   fi
 }
@@ -172,7 +234,7 @@ assert::ge() {
   if [[ "$first" -ge  "$second" ]]; then
     return 0
   else
-    [ "${#msg}" -gt 0 ] && assert::log "$first >= $second :: $msg" || true
+    [ "${#msg}" -gt 0 ] && assert::fail "$first >= $second :: $msg" || true
     return 1
   fi
 }
@@ -189,7 +251,7 @@ assert::lt() {
   if [[ "$first" -lt  "$second" ]]; then
     return 0
   else
-    [ "${#msg}" -gt 0 ] && assert::log "$first < $second :: $msg" || true
+    [ "${#msg}" -gt 0 ] && assert::fail "$first < $second :: $msg" || true
     return 1
   fi
 }
@@ -206,7 +268,7 @@ assert::le() {
   if [[ "$first" -le  "$second" ]]; then
     return 0
   else
-    [ "${#msg}" -gt 0 ] && assert::log "$first <= $second :: $msg" || true
+    [ "${#msg}" -gt 0 ] && assert::fail "$first <= $second :: $msg" || true
     return 1
   fi
 }

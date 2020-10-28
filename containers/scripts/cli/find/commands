@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+main() {
+        
+    local path='.'
+    for i in "$@"; do
+        path="${path}/${i}"
+    done
+
+    (
+        cd "$path"
+        for entry in *; do 
+            [ -f "$entry" ] && [ -x "$entry" ] && echo $entry
+        done
+    )
+}
+
+main "$@"
