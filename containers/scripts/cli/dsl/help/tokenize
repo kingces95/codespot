@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-. $(dirname ${BASH_SOURCE})/../tokenize.sh
+. $(dirname ${BASH_SOURCE})/../../cli.sh
 
 readonly LITERAL_TAB='    '
 readonly LITERAL_COLON=':'
@@ -10,25 +10,29 @@ readonly LITERAL_REQUIRED='[Required]'
 
 main() {
     local line
-    local word_number
+    local word_number=0
     local line_number=0
 
+    # preprocessor; e.g. like #IF 0 ... #ENDIF where we are only lexing
+    # when we are in an argument header and not in argument copy
     local in_argument_header=false
     local in_argument_copy=false
-
     yield() {
         if $in_argument_header && ! $in_argument_copy; then
             echo ${TOKENS[$1]} ${line_number} ${word_number} ${2-}
         fi
     }
 
+    # processor; read a line, break it up, emit tokens
     while IFS= read line; do
         line_number=$(( line_number + 1 ))
         word_number=0
 
+        # is the line a header?
         if [[ "${line}" =~ ^[a-zA-Z] ]]; then
             word_number=1
 
+            # does the header section declare arguments?
             if [[ "${line}" =~ 'Arguments' ]]; then
                 in_argument_header=true
                 in_argument_copy=false
@@ -38,42 +42,52 @@ main() {
             continue
         fi
 
+        # split the line on spaces
         words=( ${line} )
         while (( word_number < ${#words[@]} )); do
             word=${words[${word_number}]}
             word_number=$(( word_number + 1 ))
 
+            # e.g. ": this is argument copy."
             if [[ "$word" == "${LITERAL_COLON}" ]]; then
                 in_argument_copy=true
 
-            elif [[ "${word}" == $ARG_NAME_GLOB ]] && \
+            # e.g. "--help"
+            elif [[ "${word}" == $CLI_ARG_NAME_GLOB ]] && \
                     [[ "${line}" =~ ^"${LITERAL_TAB}${word}" ]]; then
                 in_argument_copy=false
-                yield ${TOKEN_ARG_NAME} "${word#--}"
+                yield ${TOKEN_NAME} "${word#--}"
 
-            elif [[ "${word}" == $ARG_ALIAS_GLOB ]]; then
-                yield ${TOKEN_ARG_ALIAS} "${word#-}"
+            # e.g. "-h"
+            elif [[ "${word}" == $CLI_ARG_ALIAS_GLOB ]]; then
+                yield ${TOKEN_ALIAS} "${word#-}"
 
+            # e.g. "[Required]"
             elif [[ "${word}" == "${LITERAL_REQUIRED}" ]]; then
                 yield ${TOKEN_REQUIRED}
 
+            # e.g. "Default:"
             elif [[ "${word}" == "${LITERAL_DEFAULT}" ]]; then
                 in_argument_copy=false
                 yield ${TOKEN_DEFAULT}
 
+            # e.g. "Allowed"
             elif [[ "${word}" == "${LITERAL_ALLOWED}" ]]; then
                 in_argument_copy=false
                 yield ${TOKEN_ALLOWED}
 
+            # e.g. "values:"
             elif [[ "${word}" == "${LITERAL_VALUES}" ]]; then
                 in_argument_copy=false
                 yield ${TOKEN_VALUES}
 
+            # elements; e.g. 'foo' of "Allowed values: foo, bar."
             elif [[ "${word}" == *, ]]; then
-                yield ${TOKEN_WORD} "${word/%,}"
+                yield ${TOKEN_VALUE_COMMA} "${word/%,}"
 
+            # last element; e.g. bar of "Allowed values: foo, bar."
             elif [[ "${word}" == *. ]]; then
-                yield ${TOKEN_WORD} "${word/%.}"
+                yield ${TOKEN_VALUE_PERIOD} "${word/%.}"
                 in_argument_copy=true
             fi
         done
@@ -85,4 +99,29 @@ main() {
     yield $TOKEN_EOF
 }
 
-main "$@"
+test() (
+    cd "$(dirname ${BASH_SOURCE})"
+
+    "./sample" -h \
+        | "./tokenize" \
+        | assert::pipe_eq \
+            'TOKEN_NAME 5 1 run-as' \
+            'TOKEN_REQUIRED 5 2' \
+            'TOKEN_DEFAULT 6 3' \
+            'TOKEN_VALUE_PERIOD 6 4 $(whoami)' \
+            'TOKEN_NAME 7 1 fruit' \
+            'TOKEN_DEFAULT 7 5' \
+            'TOKEN_VALUE_PERIOD 7 6 banana' \
+            'TOKEN_ALLOWED 7 7' \
+            'TOKEN_VALUES 8 1' \
+            'TOKEN_VALUE_COMMA 8 2 orange' \
+            'TOKEN_VALUE_PERIOD 8 3 banana' \
+            'TOKEN_NAME 11 1 debug' \
+            'TOKEN_ALIAS 11 2 d' \
+            'TOKEN_REQUIRED 11 3' \
+            'TOKEN_NAME 12 1 help' \
+            'TOKEN_ALIAS 12 2 h' \
+            'TOKEN_EOF 16 6'
+)
+
+util::main "$@"

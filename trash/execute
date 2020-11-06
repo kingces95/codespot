@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/../cli.sh
+
+assert() {
+    local variable=$1
+    local blob=$2
+    local message=$3
+
+    if [[ ! "${variable}" == $blob ]]; then
+        error "${message}"
+    fi
+}
+
+error() {
+    local message=$1
+
+    echo "${message}"
+    if [[ -n "${path}" ]]; then
+        "${path}" '-h'
+    fi
+    exit 1
+}
+
+main() {
+    # the path to the command and its arguments
+    local path=
+    local -a args=()
+
+    # resolve and set 'path' to the command path, define 'export_arguments'
+    source /dev/stdin
+
+    # check and export arguments 
+    export_arguments
+
+    #su $user -c "\"${path}\""
+
+    # run the command
+    "${path}" "${args[@]}" <&3
+}
+
+test() (
+    cd "$(dirname ${BASH_SOURCE})"
+
+    # cli::yield_args \
+    #         . help sample -d --help --fruit orange \
+    #     | "args/tokenize" \
+    #     | "args/parse" \
+    #     | "./load" \
+    #     | "./patch" \
+    #     | "./compile" 
+        # \
+        # | "./execute"
+    # exit
+    # echo ---
+
+    # cli::yield_args \
+    #         . help \
+    #     | "args/tokenize" \
+    #     | "args/parse" \
+    #     | "./load" \
+    #     | "./patch" \
+    #     | "./compile" \
+    #     | "./execute"
+
+    # echo ---
+ 
+    # cli::yield_args \
+    #         . help --bad-arg \
+    #     | "args/tokenize" \
+    #     | "args/parse" \
+    #     | "./load" \
+    #     | "./patch" \
+    #     | "./compile" \
+    #     | "./execute"
+)
+
+util::main "$@"

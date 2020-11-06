@@ -1,37 +1,35 @@
 #!/usr/bin/env bash
-. $(dirname ${BASH_SOURCE})/../parse.sh
+. $(dirname ${BASH_SOURCE})/../../cli.sh
+
+declare line
+declare word
+declare token
+declare token_name
+declare identifier
+declare arg_name='.'
 
 main() {
-
-    ERROR() {
-        dsl::die -n "Error while parsing command help :: " \
-            "line ${line}, word ${word} :: " \
-            "Expected \"$1\", got \"${token_name}\"."
-    }
 
     START() {
         ARGUMENTS
     }
 
     ARGUMENTS() {
-        dsl::read_token
+        parser::read_token
 
         while (( token != TOKEN_EOF )); do
-
-            if (( token == TOKEN_ARG_NAME )); then
-                ARGUMENT
-            else
-                ERROR 'TOKEN_ARG_NAME'
-            fi
+            ARGUMENT
         done
     }
 
     ARGUMENT() {
+        parser::assert_token_is $TOKEN_NAME
+    
         arg_name=${identifier}
-        dsl::yield ${PRODUCTION_ARG_NAME}
-        dsl::read_token
+        parser::yield ${PRODUCTION_HELP_NAME} ${identifier}
+        parser::read_token
 
-        if (( token == TOKEN_ARG_ALIAS )); then
+        if (( token == TOKEN_ALIAS )); then
             ALIAS
         fi
 
@@ -49,33 +47,64 @@ main() {
     }
 
     ALIAS() {
-        dsl::yield ${PRODUCTION_ARG_ALIAS} "${identifier}"
-        dsl::read_token
+        parser::yield ${PRODUCTION_HELP_ALIAS} ${identifier}
+        parser::read_token
     }
 
     REQUIRED() {
-        dsl::yield ${PRODUCTION_REQUIRED}
-        dsl::read_token
+        parser::yield ${PRODUCTION_HELP_REQUIRED}
+        parser::read_token
     }
 
     DEFAULT() {
-        dsl::read_token ${TOKEN_WORD}
-        dsl::yield ${PRODUCTION_DEFAULT} "${identifier}"
-        dsl::read_token
+        parser::read_token ${TOKEN_VALUE_PERIOD}
+        parser::yield ${PRODUCTION_HELP_DEFAULT} "${identifier}"
+        parser::read_token
     }
 
     ALLOWED_VALUES() {
-        dsl::read_token ${TOKEN_VALUES}
-        dsl::read_token ${TOKEN_WORD}
+        parser::read_token ${TOKEN_VALUES}
+        parser::yield ${PRODUCTION_HELP_ALLOWED} "${identifier}"
 
         while true; do
-            dsl::yield ${PRODUCTION_ALLOWED_VALUE} "${identifier}"
-            dsl::read_token
-            if (( token != TOKEN_WORD )); then break; fi
+            parser::read_token $TOKEN_VALUE_COMMA $TOKEN_VALUE_PERIOD
+
+            if (( token == TOKEN_VALUE_COMMA )); then
+                parser::yield ${PRODUCTION_HELP_ALLOWED_VALUE} "${identifier}"
+
+            elif (( token == TOKEN_VALUE_PERIOD )); then
+                parser::yield ${PRODUCTION_HELP_ALLOWED_VALUE} "${identifier}"
+                parser::yield ${PRODUCTION_HELP_ALLOWED_END}
+                parser::read_token
+                break
+            fi
         done
     }
 
     START
 }
 
-main "$@"
+test() {
+    cd "$(dirname ${BASH_SOURCE})"
+
+    "./sample" -h \
+        | "./tokenize" \
+        | "./parse" \
+        | assert::pipe_eq \
+            'run-as 3 PRODUCTION_HELP_NAME run-as' \
+            'run-as 9 PRODUCTION_HELP_REQUIRED' \
+            'run-as 5 PRODUCTION_HELP_DEFAULT $(whoami)' \
+            'fruit 3 PRODUCTION_HELP_NAME fruit' \
+            'fruit 5 PRODUCTION_HELP_DEFAULT banana' \
+            'fruit 10 PRODUCTION_HELP_ALLOWED' \
+            'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE orange' \
+            'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE banana' \
+            'fruit 12 PRODUCTION_HELP_ALLOWED_END' \
+            'debug 3 PRODUCTION_HELP_NAME debug' \
+            'debug 4 PRODUCTION_HELP_ALIAS d' \
+            'debug 9 PRODUCTION_HELP_REQUIRED' \
+            'help 3 PRODUCTION_HELP_NAME help' \
+            'help 4 PRODUCTION_HELP_ALIAS h' 
+}
+
+util::main "$@"

@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/../cli.sh
+
+indent=''
+
+error() { 
+    yield "error \"$1\"" 
+}
+
+yield() { 
+    echo "${indent}$1"
+}
+
+main() {
+    local name=
+    local variable=
+    local path=
+    local -a arguments
+    local -a allowed_values
+
+    declare_variable() {
+        name="$1"
+        variable="${name^^}"
+        variable="ARG_${variable/-/_}"
+    }
+
+    echo "export_arguments() {"
+    indent='    '
+
+    # productions are sorted (e.g. PRODUCTION_HELP_DEFAULT < PRODUCTION_ARG_VALUE)
+    while read key production production_name identifier; do
+
+        # publish path to command
+        if (( production == PRODUCTION_ARG_FILE )); then
+            path="${identifier}"
+            yield "path=\"${identifier}\""
+
+        # publish path of directory containing commands and groups
+        elif (( production == PRODUCTION_ARG_DIR )); then
+            yield "path='cli'"
+            yield "args=( 'ls' '--dir' '"${identifier}"' )"
+
+        # declare a variable
+        elif (( production == PRODUCTION_HELP_NAME )); then
+            declare_variable "${identifier}"
+            yield "declare -xg ${variable}="
+
+        # ignore metadata mapping aliases
+        elif (( production == PRODUCTION_HELP_ALIAS )); then
+            continue
+
+        # assign defaults
+        elif (( production == PRODUCTION_HELP_DEFAULT )); then
+            yield "${variable}=\"${identifier}\""
+
+        # assert variables declared in help
+        elif (( production == PRODUCTION_ARG_NAME )); then  
+            if [[ ! "${identifier}" == "${name}" ]]; then
+                declare_variable "${identifier}"
+                error "Unexpected argument '--${identifier}'."
+                break
+            fi
+
+        # assert aliases declared in help
+        elif (( production == PRODUCTION_ARG_ALIAS )); then
+            error "Unexpected argument '-${identifier}'."
+            break
+
+        # assign a value from command line to a variable defined in help
+        elif (( production == PRODUCTION_ARG_VALUE )); then
+            yield "${variable}=\"${identifier}\""
+
+            if [[ "${variable}" == 'ARG_HELP' ]] && 
+               [[ "${identifier}" == 'true' ]]; then
+                break
+            fi
+
+        # assert required variables have a value
+        elif (( production == PRODUCTION_HELP_REQUIRED )); then
+            yield "assert \"\${${variable}}\" \"?*\" \"Missing required argument '--${name}'.\""
+
+        # assert variables has an acceptable
+        elif (( production == PRODUCTION_HELP_ALLOWED )); then
+            allowed_values=()
+        elif (( production == PRODUCTION_HELP_ALLOWED_VALUE )); then
+            allowed_values+=( "${identifier}" )
+        elif (( production == PRODUCTION_HELP_ALLOWED_END )); then
+            blob="@(|${allowed_values[@]})"
+            blob="${blob/ /|}"
+            yield "assert \"\${${variable}}\" \"${blob}\" \"Argument '--${name}' has unexpected value.\""
+
+        # propagate an errors from earlier stages of the pipeline
+        elif (( production == PRODUCTION_ERROR )); then
+            error "${identifier}"
+            break
+
+        # sanity check
+        else
+            error "Unexpected production ${production_name}."
+            break
+        fi
+    done 
+
+    echo '}'
+}
+
+test() (
+    cd "$(dirname ${BASH_SOURCE})"
+
+    cli::yield_args \
+            . help sample -d --help \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | "./patch" \
+        | "./compile" \
+        | assert::pipe_eq_exact \
+            "export_arguments() {" \
+            "    path=\"./help/sample\"" \
+            "    declare -xg ARG_HELP=" \
+            "    ARG_HELP=\"true\"" \
+            "}" 
+
+    cli::yield_args \
+            . help sample -d \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | "./patch" \
+        | "./compile" \
+        | assert::pipe_eq_exact \
+            "export_arguments() {" \
+            "    path=\"./help/sample\"" \
+            "    declare -xg ARG_HELP=" \
+            "    declare -xg ARG_RUN_AS=" \
+            "    ARG_RUN_AS=\"\$(whoami)\"" \
+            "    assert \"\${ARG_RUN_AS}\" \"?*\" \"Missing required argument '--run-as'.\"" \
+            "    declare -xg ARG_DEBUG=" \
+            "    ARG_DEBUG=\"true\"" \
+            "    assert \"\${ARG_DEBUG}\" \"?*\" \"Missing required argument '--debug'.\"" \
+            "    declare -xg ARG_FRUIT=" \
+            "    ARG_FRUIT=\"banana\"" \
+            "    assert \"\${ARG_FRUIT}\" \"@(|banana|orange)\" \"Argument '--fruit' has unexpected value.\"" \
+            "}"
+
+    cli::yield_args \
+            . help \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | "./patch" \
+        | "./compile" \
+        | assert::pipe_eq_exact \
+            "export_arguments() {" \
+            "    path='cli'" \
+            "    args=( 'ls' '--dir' './help' )" \
+            "}"
+
+    cli::yield_args \
+            . help --bad-arg \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | "./patch" \
+        | "./compile" \
+        | assert::pipe_eq_exact \
+            "export_arguments() {" \
+            "    path='cli'" \
+            "    args=( 'ls' '--dir' './help' )" \
+            "    error \"Unexpected argument '--bad-arg'.\"" \
+            "}" \
+
+    cli::yield_args \
+            . help -b \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | "./patch" \
+        | "./compile" \
+        | assert::pipe_eq_exact \
+            "export_arguments() {" \
+            "    path='cli'" \
+            "    args=( 'ls' '--dir' './help' )" \
+            "    error \"Unexpected argument '-b'.\"" \
+            "}" \
+)
+
+util::main "$@"

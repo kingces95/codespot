@@ -1,43 +1,47 @@
 #!/usr/bin/env bash
-. $(dirname ${BASH_SOURCE})/../tokenize.sh
+. $(dirname ${BASH_SOURCE})/../../cli.sh
+
+help() {
+ cli::unindent << EOF
+    Description
+        Tokenize a stream of command line arguments.
+
+    Global Arguments
+        --help -h               : Show this message and exit.
+
+    Examples
+        Tokenize '-h
+            echo -h | tokenize
+EOF
+}
 
 main() {
-    local word
     local word_number=0
-    local -A aliases
-    local name
-
-    while read name alias; do
-        aliases[$alias]=$name
-    done
+    local past_positional_args=false
 
     yield() {
-        echo ${TOKENS[$1]} 1 ${word_number} ${2-''}
+        echo "${TOKENS[$1]}" '1' "${word_number}" ${2-''}
     }
 
-    resolve_alias() {
-        local alias=$1
-        name=${aliases[${alias}]}
-        if [[ -z "${name}" ]]; then
-            dsl::die "Unexpected argument '-$1'."
-        fi
-    }
-
-    while (( $# > 0 )); do
+    while IFS= read; do
         word_number=$(( word_number + 1 ))
-        word=$1
-        shift
+ 
+        if [[ "${REPLY}" == $CLI_ARG_NAME_GLOB ]]; then
+            yield "${TOKEN_NAME}" "${REPLY#--}"
 
-        if [[ "${word}" == $ARG_NAME_GLOB ]]; then
-            name="${word#--}"
-            yield ${TOKEN_ARG_NAME} "${name}"
+        elif [[ "${REPLY}" == $CLI_ARG_PATH_GLOB ]]; then
+            yield "${TOKEN_PATH}" "${REPLY}"
 
-        elif [[ "${word}" == $ARG_ALIAS_GLOB ]]; then
-            resolve_alias ${word#-}
-            yield ${TOKEN_ARG_NAME} "${name}"
+        elif [[ "${REPLY}" == $CLI_ARG_ALIAS_GLOB ]]; then
+            yield "${TOKEN_ALIAS}" "${REPLY#-}"
+
+        elif [[ "${REPLY}" != -* ]]; then
+            yield "${TOKEN_IDENTIFIER}" "${REPLY}"
 
         else
-            yield ${TOKEN_ARG_VALUE} "${word}"
+            yield "${TOKEN_ERROR}" \
+                "Unexpected argument '${REPLY}'."
+            exit
         fi
     done
 
@@ -45,4 +49,37 @@ main() {
     yield $TOKEN_EOF
 }
 
-main "$@"
+test() (
+    cd "$(dirname ${BASH_SOURCE})"
+
+    cli::yield_args \
+            group cmd \
+            --run-as myuser \
+            --fruit banana \
+            -h --debug \
+        | "./tokenize" \
+        | assert::pipe_eq \
+            'TOKEN_IDENTIFIER 1 1 group' \
+            'TOKEN_IDENTIFIER 1 2 cmd' \
+            'TOKEN_NAME 1 3 run-as' \
+            'TOKEN_IDENTIFIER 1 4 myuser' \
+            'TOKEN_NAME 1 5 fruit' \
+            'TOKEN_IDENTIFIER 1 6 banana' \
+            'TOKEN_ALIAS 1 7 h' \
+            'TOKEN_NAME 1 8 debug' \
+            'TOKEN_EOF 1 9'
+
+    cli::yield_args \
+            . / \
+            group cmd \
+            -run-as myuser \
+        | "./tokenize" \
+        | assert::pipe_eq \
+            'TOKEN_PATH 1 1 .' \
+            'TOKEN_PATH 1 2 /' \
+            'TOKEN_IDENTIFIER 1 3 group' \
+            'TOKEN_IDENTIFIER 1 4 cmd' \
+            "TOKEN_ERROR 1 5 Unexpected argument '-run-as'."
+)
+
+util::main "$@"

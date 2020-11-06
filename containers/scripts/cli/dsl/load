@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/../cli.sh
+
+readonly DSL_DIR=$(util::this_dir)
+readonly DSL_HELP_DIR="${DSL_DIR}/help"
+readonly DSL_HELP_TOKENIZE="${DSL_HELP_DIR}/tokenize"
+readonly DSL_HELP_PARSE="${DSL_HELP_DIR}/parse"
+
+main() {
+
+    # first production is PRODUCTION_ARG_PATH by construction
+    read key production production_name path
+
+    if (( production != PRODUCTION_ERROR )); then
+
+        # check if the path points to an an executable file
+        if [[ -f "${path}" ]] && [[ -x "${path}" ]]; then
+    
+            # load metadata from PRODUCTION_HELP_*
+            "${path}" '-h' \
+                | "${DSL_HELP_TOKENIZE}" \
+                | "${DSL_HELP_PARSE}"
+                
+            production=${PRODUCTION_ARG_FILE}
+
+        elif [[ -d "${path}" ]]; then
+            production=${PRODUCTION_ARG_DIR}
+
+        else
+            echo . ${PRODUCTION_ERROR} 'PRODUCTION_ERROR' \
+                "Unexpected path '${path}' is neither executable file nor directory."
+            exit
+        fi
+    fi
+
+    # PRODUCTION_ARG_PATH
+    echo ${key} ${production} ${PRODUCTIONS[${production}]} "${path}"
+
+    # copy remaining PRODUCTION_ARGS_*
+    while read; do echo "${REPLY}"; done
+}
+
+test() (
+    cd "$(dirname ${BASH_SOURCE})"
+
+    cli::yield_args \
+            . help sample \
+            -d --help --foo-bar \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | assert::pipe_eq \
+            'run-as 3 PRODUCTION_HELP_NAME run-as' \
+            'run-as 9 PRODUCTION_HELP_REQUIRED' \
+            'run-as 5 PRODUCTION_HELP_DEFAULT $(whoami)' \
+            'fruit 3 PRODUCTION_HELP_NAME fruit' \
+            'fruit 5 PRODUCTION_HELP_DEFAULT banana' \
+            'fruit 10 PRODUCTION_HELP_ALLOWED' \
+            'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE orange' \
+            'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE banana' \
+            'fruit 12 PRODUCTION_HELP_ALLOWED_END' \
+            'debug 3 PRODUCTION_HELP_NAME debug' \
+            'debug 4 PRODUCTION_HELP_ALIAS d' \
+            'debug 9 PRODUCTION_HELP_REQUIRED' \
+            'help 3 PRODUCTION_HELP_NAME help' \
+            'help 4 PRODUCTION_HELP_ALIAS h' \
+            '. 1 PRODUCTION_ARG_FILE ./help/sample' \
+            'd 7 PRODUCTION_ARG_ALIAS d' \
+            'd 8 PRODUCTION_ARG_VALUE true' \
+            'help 6 PRODUCTION_ARG_NAME help' \
+            'help 8 PRODUCTION_ARG_VALUE true' \
+            'foo-bar 6 PRODUCTION_ARG_NAME foo-bar' \
+            'foo-bar 8 PRODUCTION_ARG_VALUE true'
+
+    cli::yield_args \
+            . help \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | assert::pipe_eq \
+            '. 2 PRODUCTION_ARG_DIR ./help'
+
+    cli::yield_args \
+            . bad path \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | assert::pipe_eq \
+            ". 13 PRODUCTION_ERROR Unexpected path './bad/path' is neither executable file nor directory."
+)
+
+util::main "$@"

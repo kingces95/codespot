@@ -1,94 +1,134 @@
 #!/usr/bin/env bash
-. $(dirname ${BASH_SOURCE})/../parse.sh
+. $(dirname ${BASH_SOURCE})/../../cli.sh
+
+declare line
+declare word
+declare token
+declare token_name
+declare identifier
+declare arg_name='.'
 
 main() {
-    local readonly resolve=$(dirname ${BASH_SOURCE})/resolve
-
-    ERROR() {
-        dsl::die "Error while parsing command line :: \
-            word ${word} :: \
-            Expected \"$1\", got \"${token_name}\" :: \
-            \"${identifier}\"."
-    }
 
     START() {
         ARGUMENTS
     }
 
     ARGUMENTS() {
-        dsl::read_token
-        ARGUMENTS_POSITIONAL
+        parser::read_token ${TOKEN_PATH}
+        ARGUMENTS_PATH
         ARGUMENTS_NAMED
     }
 
-    ARGUMENTS_POSITIONAL() {
-        local path='.'
-        local last_path
-        local resolution=${PRODUCTION_CMD_DIR}
+    ARGUMENTS_PATH() {
+        local path="${identifier}"
+        parser::read_token
 
-        while (( resolution == PRODUCTION_CMD_DIR && \
-                 token != TOKEN_EOF && \
-                 token != TOKEN_ARG_NAME )); do
-
-            if (( token != TOKEN_ARG_VALUE )); then
-                ERROR 'TOKEN_ARG_VALUE'
+        while (( token != TOKEN_EOF && token == TOKEN_IDENTIFIER )); do
+            if [[ ! "${identifier}" == $CLI_ARG_DIR_ENTRY_GLOB ]]; then
+                parser::error "Command name '${identifier}' does not match '$CLI_ARG_DIR_ENTRY_GLOB'."
             fi
-            
-            last_path="${path}"
-            path="${last_path}/${identifier}"
-            resolution=$(${resolve} "${path}")
-            resolution=${!resolution}
 
-            dsl::read_token
+            path="${path}/${identifier}"
+            parser::read_token
         done
 
-        case ${resolution} in
-            ${PRODUCTION_CMD_SOURCE}) 
-                dsl::yield ${PRODUCTION_CMD_SOURCE} ${path}
-                ;;
-
-            ${PRODUCTION_CMD_DIR}) 
-                dsl::yield ${PRODUCTION_CMD_DIR} ${path}
-                if (( token != TOKEN_EOF)); then
-                    ERROR TOKEN_EOF
-                fi
-                exit ;;
-
-            ${PRODUCTION_CMD_MISSING}) 
-                dsl::yield ${PRODUCTION_CMD_MISSING} ${last_path}
-                exit ;;
-        esac
+        parser::yield ${PRODUCTION_ARG_PATH} ${path}
     }
 
     ARGUMENTS_NAMED() {
-        while (( token != TOKEN_EOF )); do
 
-            if (( token == TOKEN_ARG_NAME )); then
+        while (( token != TOKEN_EOF )); do
+            parser::assert_token_is $TOKEN_NAME $TOKEN_ALIAS 
+
+            if (( token == TOKEN_NAME )); then
                 NAME
-            else
-                ERROR 'TOKEN_ARG_NAME'
+            elif (( token == TOKEN_ALIAS )); then
+                ALIAS
             fi
         done
+    }
+
+    ALIAS() {
+        arg_name=${identifier}
+        parser::yield ${PRODUCTION_ARG_ALIAS} ${identifier}
+        parser::read_token
+
+        VALUE
     }
 
     NAME() {
         arg_name=${identifier}
-        dsl::yield ${PRODUCTION_ARG_NAME}
-        dsl::read_token
+        parser::yield ${PRODUCTION_ARG_NAME} ${identifier}
+        parser::read_token
 
         VALUE
     }
 
     VALUE() {
-        if (( token == TOKEN_ARG_VALUE )); then
-            dsl::yield ${PRODUCTION_ARG_VALUE} ${identifier}
-            dsl::read_token
+        if (( token == TOKEN_IDENTIFIER )); then
+            parser::yield ${PRODUCTION_ARG_VALUE} ${identifier}
+            parser::read_token
         else
-            dsl::yield ${PRODUCTION_ARG_VALUE} 'true'
+            parser::yield ${PRODUCTION_ARG_VALUE} 'true'
         fi
     }
 
     START
 }
 
-main "$@"
+test() (
+    cd "$(dirname ${BASH_SOURCE})"
+
+    cli::yield_args . \
+        | "./tokenize" \
+        | "./parse" \
+        | assert::pipe_eq \
+            '. 0 PRODUCTION_ARG_PATH .'
+
+    cli::yield_args \
+        . group cmd \
+            --run-as myuser \
+            --fruit banana \
+            -h --debug \
+        | "./tokenize" \
+        | "./parse" \
+        | assert::pipe_eq \
+            '. 0 PRODUCTION_ARG_PATH ./group/cmd' \
+            'run-as 6 PRODUCTION_ARG_NAME run-as' \
+            'run-as 8 PRODUCTION_ARG_VALUE myuser' \
+            'fruit 6 PRODUCTION_ARG_NAME fruit' \
+            'fruit 8 PRODUCTION_ARG_VALUE banana' \
+            'h 7 PRODUCTION_ARG_ALIAS h' \
+            'h 8 PRODUCTION_ARG_VALUE true' \
+            'debug 6 PRODUCTION_ARG_NAME debug' \
+            'debug 8 PRODUCTION_ARG_VALUE true'
+
+    cli::yield_args \
+        . group cmd \
+            -run-as myuser \
+        | "./tokenize" \
+        | "./parse" \
+        | assert::pipe_eq \
+            ". 0 PRODUCTION_ARG_PATH ./group/cmd" \
+            ". 13 PRODUCTION_ERROR Unexpected argument '-run-as'."
+
+    cli::yield_args \
+        . bad.name \
+        | "./tokenize" \
+        | "./parse" \
+        | assert::pipe_eq \
+            ". 13 PRODUCTION_ERROR Command name 'bad.name' does not match '+([a-zA-Z0-9_-])'."
+
+    cli::yield_args \
+        . --foo bar baz \
+        | "./tokenize" \
+        | "./parse" \
+        | assert::pipe_eq \
+            ". 0 PRODUCTION_ARG_PATH ." \
+            "foo 6 PRODUCTION_ARG_NAME foo" \
+            "foo 8 PRODUCTION_ARG_VALUE bar" \
+            "foo 13 PRODUCTION_ERROR Unexpected argument 'baz'. Expected token in { TOKEN_NAME TOKEN_ALIAS }, but got TOKEN_IDENTIFIER."
+)
+
+util::main "$@"

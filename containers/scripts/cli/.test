@@ -19,7 +19,7 @@ CLI_PATH="${THIS_DIR}"/index.sh
 
 (
     . "${CLI_PATH}"
-    read line_number frame file < <(cli::callstack)
+    read line_number frame file < <(util::callstack)
     assert::eq $(( LINENO - 1)) ${line_number}
     assert::eq 'main' ${frame}
     assert::eq "$0" "${file}"
@@ -85,13 +85,13 @@ CLI_PATH="${THIS_DIR}"/index.sh
 # }
 # assert::ok declare_flag "declare flag."
 
-# assert::eq "$(cli::this_file)" "${BASH_SOURCE[0]}" \
-#     "cli::this_file"
+# assert::eq "$(util::this_file)" "${BASH_SOURCE[0]}" \
+#     "util::this_file"
 
-# assert::eq "$(cli::this_dir)" "$(dirname ${BASH_SOURCE[0]})" \
-#     "cli::this_dir"
+# assert::eq "$(util::this_dir)" "$(dirname ${BASH_SOURCE[0]})" \
+#     "util::this_dir"
 
-# assert::match $(cli::up_time) "T\+[0-9][0-9]:[0-9][0-9]:[0-9][0-9]" \
-#     "cli::up_time format"
+# assert::match $(util::time_up) "T\+[0-9][0-9]:[0-9][0-9]:[0-9][0-9]" \
+#     "util::time_up format"
 
 "${THIS_DIR}"/test/test "$@"

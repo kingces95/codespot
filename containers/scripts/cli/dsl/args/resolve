@@ -1,4 +1,5 @@
-. $(dirname ${BASH_SOURCE})/../dsl.sh
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/../../cli.sh
 
 main() {
     shopt -s extglob
@@ -23,4 +24,4 @@ main() {
     fi
 }
 
-main "$@"
+util::main "$@"
