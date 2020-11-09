@@ -9,8 +9,7 @@ readonly CLI_ARG_NAME_GLOB="--@(${CLI_ARG_CHAR_GLOB})+(${CLI_ARG_CHAR_GLOB})"
 
 readonly TOKENS=(
     'TOKEN_DEFAULT'
-    'TOKEN_ALLOWED'
-    'TOKEN_VALUES'
+    'TOKEN_ALLOWED_VALUES'
     'TOKEN_VALUE_COMMA'
     'TOKEN_VALUE_PERIOD'
     'TOKEN_IDENTIFIER'
@@ -82,18 +81,6 @@ cli::if_tty_then_redirect_to_file() {
     fi
 }
 
-# streaming
-cli::indent() ( sed 's/^/    /'; )
-cli::unindent() ( sed 's/^    //'; )
-cli::skip() ( tail -n $(( $1 + 1 )); )
-
-cli::yield_args() (
-    while (( $# > 0 )); do
-        echo "$1"
-        shift
-    done
-)
-
 cli::on_exit() {
     local exit_code=$?
 
@@ -116,25 +103,6 @@ cli::on_exit() {
 
     return $exit_code
 }
-
-cli::initialize_pipeline() {
-    while read id type name value; do
-
-        if (( type == ENVIRONMENT_END )); then
-            echo "${id}" "${type}"
-            break
-        fi
-
-        declare -g "${name}"="${value}"
-        
-        if (( type == ENVIRONMENT_PIPELINE_ID )); then
-            value=$(( value + 1 ))
-        fi
-
-        echo "${id}" "${type}" "${name}" "${value}"
-    done
-}
-
 
 parser::yield() {
     echo ${arg_name} $1 ${PRODUCTIONS[$1]} ${2-}

@@ -7,34 +7,38 @@ readonly DSL_HELP_TOKENIZE="${DSL_HELP_DIR}/tokenize"
 readonly DSL_HELP_PARSE="${DSL_HELP_DIR}/parse"
 
 main() {
+    read
+
+    read key production production_name <<< "${REPLY}"
+    if (( production == PRODUCTION_ERROR )); then
+        echo "${REPLY}"
+        exit
+    fi
 
     # first production is PRODUCTION_ARG_PATH by construction
-    read key production production_name path
+    read key production production_name path <<< "${REPLY}"
 
-    if (( production != PRODUCTION_ERROR )); then
+    # check if the path points to an an executable file
+    if [[ -f "${path}" ]] && [[ -x "${path}" ]]; then
 
-        # check if the path points to an an executable file
-        if [[ -f "${path}" ]] && [[ -x "${path}" ]]; then
-    
-            # load metadata from PRODUCTION_HELP_*
-            "${path}" '-h' \
-                | "${DSL_HELP_TOKENIZE}" \
-                | "${DSL_HELP_PARSE}"
-                
-            production=${PRODUCTION_ARG_FILE}
+        # load metadata from PRODUCTION_HELP_*
+        "${path}" '-h' \
+            | "${DSL_HELP_TOKENIZE}" \
+            | "${DSL_HELP_PARSE}"
+            
+        production=${PRODUCTION_ARG_FILE}
 
-        elif [[ -d "${path}" ]]; then
-            production=${PRODUCTION_ARG_DIR}
+    elif [[ -d "${path}" ]]; then
+        production=${PRODUCTION_ARG_DIR}
 
-        else
-            echo . ${PRODUCTION_ERROR} 'PRODUCTION_ERROR' \
-                "Unexpected path '${path}' is neither executable file nor directory."
-            exit
-        fi
+    else
+        echo . ${PRODUCTION_ERROR} 'PRODUCTION_ERROR' \
+            "Unexpected path '${path}' is neither executable file nor directory."
+        exit
     fi
 
     # PRODUCTION_ARG_PATH
-    echo ${key} ${production} ${PRODUCTIONS[${production}]} "${path}"
+    echo '~' ${production} ${PRODUCTIONS[${production}]} "${path}"
 
     # copy remaining PRODUCTION_ARGS_*
     while read; do echo "${REPLY}"; done
@@ -43,7 +47,7 @@ main() {
 test() (
     cd "$(dirname ${BASH_SOURCE})"
 
-    cli::yield_args \
+    util::yield_args \
             . help sample \
             -d --help --foo-bar \
         | "args/tokenize" \
@@ -51,8 +55,6 @@ test() (
         | "./load" \
         | assert::pipe_eq \
             'run-as 3 PRODUCTION_HELP_NAME run-as' \
-            'run-as 9 PRODUCTION_HELP_REQUIRED' \
-            'run-as 5 PRODUCTION_HELP_DEFAULT $(whoami)' \
             'fruit 3 PRODUCTION_HELP_NAME fruit' \
             'fruit 5 PRODUCTION_HELP_DEFAULT banana' \
             'fruit 10 PRODUCTION_HELP_ALLOWED' \
@@ -64,7 +66,7 @@ test() (
             'debug 9 PRODUCTION_HELP_REQUIRED' \
             'help 3 PRODUCTION_HELP_NAME help' \
             'help 4 PRODUCTION_HELP_ALIAS h' \
-            '. 1 PRODUCTION_ARG_FILE ./help/sample' \
+            '~ 1 PRODUCTION_ARG_FILE ./help/sample' \
             'd 7 PRODUCTION_ARG_ALIAS d' \
             'd 8 PRODUCTION_ARG_VALUE true' \
             'help 6 PRODUCTION_ARG_NAME help' \
@@ -72,15 +74,15 @@ test() (
             'foo-bar 6 PRODUCTION_ARG_NAME foo-bar' \
             'foo-bar 8 PRODUCTION_ARG_VALUE true'
 
-    cli::yield_args \
+    util::yield_args \
             . help \
         | "args/tokenize" \
         | "args/parse" \
         | "./load" \
         | assert::pipe_eq \
-            '. 2 PRODUCTION_ARG_DIR ./help'
+            '~ 2 PRODUCTION_ARG_DIR ./help'
 
-    cli::yield_args \
+    util::yield_args \
             . bad path \
         | "args/tokenize" \
         | "args/parse" \

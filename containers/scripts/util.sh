@@ -56,6 +56,19 @@ util::declare_enums() {
     done
 }
 
+# streaming
+cli::indent() ( sed 's/^/    /'; )
+cli::unindent() ( sed 's/^    //'; )
+cli::skip() ( tail -n $(( $1 + 1 )); )
+
+# invocation
+util::yield_args() (
+    while (( $# > 0 )); do
+        echo "$1"
+        shift
+    done
+)
+
 # default implementations
 help() { 
     echo "Unexpected failure to provide implementation of 'help'."
@@ -65,17 +78,72 @@ test() {
 }
 
 # shim
-util::main() {
-    : ${ARG_HELP:=false}
+util::arg_to_variable_name() {
+    name=$1
+    name="${name#--}"
+    name="${name^^}"
+    name="ARG_${name/-/_}"
+    echo "${name}"
+}
+util::escape_args_then_call_as() {
+    local user=$1
+    shift
 
-    if ${ARG_HELP}; then 
+    local -a args
+    for i in "$@"; do
+        args+=( $(printf %q "${i}") )
+    done
+
+    sudo su "${user}" -c "${args[*]}"
+}
+util::main() {
+
+    # declare well known variables
+    : ${ARG_HELP:=false}
+    : ${ARG_SELF_TEST:=false}
+    : ${ARG_RUN_AS:=}
+
+    # resolve well known aliases
+    if [[ "${1-}" == '-h' ]]; then
+        set -- '--help'
+    fi
+
+    # declare variables passed via the command line    
+    local name
+    local value
+    local args=( "$@" )
+    until (( $# == 0 )); do
+        name="$1"; shift
+
+        # support flags; e.g. This '--help true' is the same '--help' 
+        if (( $# == 0 )) || [[ "$1" == --* ]]; then
+            value="true"
+        else
+            value="$1"; shift
+        fi
+
+        # map argument names to bash names; e.g. '--foo' ==> 'ARG_FOO'
+        name=$(util::arg_to_variable_name ${name})
+        
+        # declare non-exported, but global, bash variables
+        declare -g "${name}"="${value}"
+    done
+
+    # implement well known features
+    if [[ -n "${ARG_RUN_AS}" ]] && [[ ! "${ARG_RUN_AS}" == "$(whoami)" ]]; then
+        util::escape_args_then_call_as "${ARG_RUN_AS}" "$0" "${args[@]}"
+    elif ${ARG_HELP}; then 
         help
+    elif ${ARG_SELF_TEST}; then 
+        test
     else
-        case "${@:-}" in
-            "-h") help ;;
-            "--help") help ;;
-            "--self-test") test ;;
-            *) main "$@" ;;
-        esac
+        # *really* clean up
+        unset name
+        unset value
+        unset args
+        unset ARG_RUN_AS
+        unset ARG_HELP
+        unset ARG_SELF_TEST
+        main
     fi
 }

@@ -44,21 +44,18 @@ patch() {
 test() (
     cd "$(dirname ${BASH_SOURCE})"
 
-    cli::yield_args \
+    util::yield_args \
             . help sample -d --help --foo-bar \
         | "args/tokenize" \
         | "args/parse" \
         | "./load" \
         | "./patch" \
         | assert::pipe_eq \
-            '. 1 PRODUCTION_ARG_FILE ./help/sample' \
             '_help 3 PRODUCTION_HELP_NAME help' \
             '_help 4 PRODUCTION_HELP_ALIAS h' \
             '_help 6 PRODUCTION_ARG_NAME help' \
             '_help 8 PRODUCTION_ARG_VALUE true' \
             '_run-as 3 PRODUCTION_HELP_NAME run-as' \
-            '_run-as 5 PRODUCTION_HELP_DEFAULT $(whoami)' \
-            '_run-as 9 PRODUCTION_HELP_REQUIRED' \
             'debug 3 PRODUCTION_HELP_NAME debug' \
             'debug 4 PRODUCTION_HELP_ALIAS d' \
             'debug 6 PRODUCTION_ARG_NAME debug' \
@@ -71,7 +68,8 @@ test() (
             'fruit 10 PRODUCTION_HELP_ALLOWED' \
             'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE banana' \
             'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE orange' \
-            'fruit 12 PRODUCTION_HELP_ALLOWED_END'
+            'fruit 12 PRODUCTION_HELP_ALLOWED_END' \
+            '~ 1 PRODUCTION_ARG_FILE ./help/sample'
 )
 
 util::main "$@"

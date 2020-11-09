@@ -2,15 +2,24 @@
 . $(dirname ${BASH_SOURCE})/../../cli.sh
 
 help() {
- cli::unindent << EOF
+cli::unindent << EOF
     Description
-        Tokenize a stream of command line arguments.
+        Read command line arguments from stdin and emit tokens 
+        to stdout one per line in the form:
+
+            token_name line word [identifier]
+
+        TOKEN_PATH matches '${CLI_ARG_PATH_GLOB}'.
+        TOKEN_NAME matches '${CLI_ARG_NAME_GLOB}'.
+        TOKEN_ALIAS matches '${CLI_ARG_ALIAS_GLOB}'.
+        TOKEN_IDENTIFIER matches anything else that does not start
+        with a dash, in which case TOKEN_ERROR is emitted.
 
     Global Arguments
         --help -h               : Show this message and exit.
 
     Examples
-        Tokenize '-h
+        Tokenize '-h'
             echo -h | tokenize
 EOF
 }
@@ -52,7 +61,7 @@ main() {
 test() (
     cd "$(dirname ${BASH_SOURCE})"
 
-    cli::yield_args \
+    util::yield_args \
             group cmd \
             --run-as myuser \
             --fruit banana \
@@ -69,7 +78,7 @@ test() (
             'TOKEN_NAME 1 8 debug' \
             'TOKEN_EOF 1 9'
 
-    cli::yield_args \
+    util::yield_args \
             . / \
             group cmd \
             -run-as myuser \

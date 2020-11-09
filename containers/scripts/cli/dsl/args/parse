@@ -80,13 +80,13 @@ main() {
 test() (
     cd "$(dirname ${BASH_SOURCE})"
 
-    cli::yield_args . \
+    util::yield_args . \
         | "./tokenize" \
         | "./parse" \
         | assert::pipe_eq \
             '. 0 PRODUCTION_ARG_PATH .'
 
-    cli::yield_args \
+    util::yield_args \
         . group cmd \
             --run-as myuser \
             --fruit banana \
@@ -104,7 +104,7 @@ test() (
             'debug 6 PRODUCTION_ARG_NAME debug' \
             'debug 8 PRODUCTION_ARG_VALUE true'
 
-    cli::yield_args \
+    util::yield_args \
         . group cmd \
             -run-as myuser \
         | "./tokenize" \
@@ -113,14 +113,14 @@ test() (
             ". 0 PRODUCTION_ARG_PATH ./group/cmd" \
             ". 13 PRODUCTION_ERROR Unexpected argument '-run-as'."
 
-    cli::yield_args \
+    util::yield_args \
         . bad.name \
         | "./tokenize" \
         | "./parse" \
         | assert::pipe_eq \
             ". 13 PRODUCTION_ERROR Command name 'bad.name' does not match '+([a-zA-Z0-9_-])'."
 
-    cli::yield_args \
+    util::yield_args \
         . --foo bar baz \
         | "./tokenize" \
         | "./parse" \

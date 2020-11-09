@@ -1,127 +1,135 @@
 #!/usr/bin/env bash
 . $(dirname ${BASH_SOURCE})/../cli.sh
 
-indent=''
-
 error() { 
     yield "error \"$1\"" 
 }
 
 yield() { 
-    echo "${indent}$1"
+    echo "$@"
 }
 
 main() {
     local name=
-    local variable=
-    local path=
-    local -a arguments
+    local -A arguments
     local -a allowed_values
 
-    declare_variable() {
-        name="$1"
-        variable="${name^^}"
-        variable="ARG_${variable/-/_}"
+    emit_body() {
+
+        # productions are sorted (e.g. PRODUCTION_HELP_DEFAULT < PRODUCTION_ARG_VALUE)
+        while read key production production_name identifier; do
+
+            # declare a variable
+            if (( production == PRODUCTION_HELP_NAME )); then
+                name="${identifier}"
+                arguments[${name}]=
+
+            # ignore metadata mapping aliases
+            elif (( production == PRODUCTION_HELP_ALIAS )); then
+                continue
+
+            # assign defaults
+            elif (( production == PRODUCTION_HELP_DEFAULT )); then
+                arguments[${name}]="${identifier}"
+
+            # assert variables declared in help
+            elif (( production == PRODUCTION_ARG_NAME )); then  
+                if [[ ! "${arguments[${identifier}]+test}" ]]; then
+                    error "Unexpected argument '--${identifier}'."
+                    return
+                fi
+
+            # assert aliases declared in help
+            elif (( production == PRODUCTION_ARG_ALIAS )); then
+                error "Unexpected argument '-${identifier}'."
+                return
+
+            # assign a value from command line to a variable defined in help
+            elif (( production == PRODUCTION_ARG_VALUE )); then
+                arguments[${name}]="${identifier}"
+
+                if [[ "${name}" == 'help' ]] && 
+                    [[ "${identifier}" == 'true' ]]; then
+                    break
+                fi
+
+            # assert required variables have a value
+            elif (( production == PRODUCTION_HELP_REQUIRED )); then
+                if [[ ! "${arguments[${name}]}" == ?* ]]; then
+                    error "Missing required argument '--${name}'."
+                    return
+                fi
+
+            # assert variables has an acceptable
+            elif (( production == PRODUCTION_HELP_ALLOWED )); then
+                allowed_values=()
+            elif (( production == PRODUCTION_HELP_ALLOWED_VALUE )); then
+                allowed_values+=( "${identifier}" )
+            elif (( production == PRODUCTION_HELP_ALLOWED_END )); then
+                blob="@(|${allowed_values[@]})"
+                blob="${blob/ /|}"
+
+                if [[ ! "${arguments[${name}]}" == $blob ]]; then
+                    error "Unexpected value '${arguments[${name}]}' for '--${name}' does not match '$blob'."
+                    return
+                fi
+
+            else
+                break
+            fi
+        done
+
+        while true; do
+
+            # publish path to command
+            if (( production == PRODUCTION_ARG_FILE )); then
+                yield "${identifier}"
+                for i in "${!arguments[@]}"; do
+                    if [[ -z "${arguments[$i]}" ]]; then
+                        continue
+                    fi
+
+                    yield "--${i}"
+                    yield "${arguments[$i]}"
+                done
+
+            # publish path of directory containing commands and groups
+            elif (( production == PRODUCTION_ARG_DIR )); then
+                error "production == PRODUCTION_ARG_DIR :: NYI"
+
+            # propagate an error from an earlier stage of the pipeline
+            elif (( production == PRODUCTION_ERROR )); then
+                error "${identifier}"
+                return
+            fi
+
+            # break once all productions have been read
+            if ! read key production production_name identifier; then
+                break
+            fi
+        done 
     }
-
-    echo "export_arguments() {"
-    indent='    '
-
-    # productions are sorted (e.g. PRODUCTION_HELP_DEFAULT < PRODUCTION_ARG_VALUE)
-    while read key production production_name identifier; do
-
-        # publish path to command
-        if (( production == PRODUCTION_ARG_FILE )); then
-            path="${identifier}"
-            yield "path=\"${identifier}\""
-
-        # publish path of directory containing commands and groups
-        elif (( production == PRODUCTION_ARG_DIR )); then
-            yield "path='cli'"
-            yield "args=( 'ls' '--dir' '"${identifier}"' )"
-
-        # declare a variable
-        elif (( production == PRODUCTION_HELP_NAME )); then
-            declare_variable "${identifier}"
-            yield "declare -xg ${variable}="
-
-        # ignore metadata mapping aliases
-        elif (( production == PRODUCTION_HELP_ALIAS )); then
-            continue
-
-        # assign defaults
-        elif (( production == PRODUCTION_HELP_DEFAULT )); then
-            yield "${variable}=\"${identifier}\""
-
-        # assert variables declared in help
-        elif (( production == PRODUCTION_ARG_NAME )); then  
-            if [[ ! "${identifier}" == "${name}" ]]; then
-                declare_variable "${identifier}"
-                error "Unexpected argument '--${identifier}'."
-                break
-            fi
-
-        # assert aliases declared in help
-        elif (( production == PRODUCTION_ARG_ALIAS )); then
-            error "Unexpected argument '-${identifier}'."
-            break
-
-        # assign a value from command line to a variable defined in help
-        elif (( production == PRODUCTION_ARG_VALUE )); then
-            yield "${variable}=\"${identifier}\""
-
-            if [[ "${variable}" == 'ARG_HELP' ]] && 
-               [[ "${identifier}" == 'true' ]]; then
-                break
-            fi
-
-        # assert required variables have a value
-        elif (( production == PRODUCTION_HELP_REQUIRED )); then
-            yield "assert \"\${${variable}}\" \"?*\" \"Missing required argument '--${name}'.\""
-
-        # assert variables has an acceptable
-        elif (( production == PRODUCTION_HELP_ALLOWED )); then
-            allowed_values=()
-        elif (( production == PRODUCTION_HELP_ALLOWED_VALUE )); then
-            allowed_values+=( "${identifier}" )
-        elif (( production == PRODUCTION_HELP_ALLOWED_END )); then
-            blob="@(|${allowed_values[@]})"
-            blob="${blob/ /|}"
-            yield "assert \"\${${variable}}\" \"${blob}\" \"Argument '--${name}' has unexpected value.\""
-
-        # propagate an errors from earlier stages of the pipeline
-        elif (( production == PRODUCTION_ERROR )); then
-            error "${identifier}"
-            break
-
-        # sanity check
-        else
-            error "Unexpected production ${production_name}."
-            break
-        fi
-    done 
-
-    echo '}'
+    emit_body
 }
 
 test() (
     cd "$(dirname ${BASH_SOURCE})"
 
-    cli::yield_args \
-            . help sample -d --help \
+    # only '--help' and no defaults
+    util::yield_args \
+            . help sample --help \
         | "args/tokenize" \
         | "args/parse" \
         | "./load" \
         | "./patch" \
         | "./compile" \
         | assert::pipe_eq_exact \
-            "export_arguments() {" \
-            "    path=\"./help/sample\"" \
-            "    declare -xg ARG_HELP=" \
-            "    ARG_HELP=\"true\"" \
-            "}" 
+            "./help/sample" \
+            "--help" \
+            "true"
 
-    cli::yield_args \
+    # defaults
+    util::yield_args \
             . help sample -d \
         | "args/tokenize" \
         | "args/parse" \
@@ -129,21 +137,39 @@ test() (
         | "./patch" \
         | "./compile" \
         | assert::pipe_eq_exact \
-            "export_arguments() {" \
-            "    path=\"./help/sample\"" \
-            "    declare -xg ARG_HELP=" \
-            "    declare -xg ARG_RUN_AS=" \
-            "    ARG_RUN_AS=\"\$(whoami)\"" \
-            "    assert \"\${ARG_RUN_AS}\" \"?*\" \"Missing required argument '--run-as'.\"" \
-            "    declare -xg ARG_DEBUG=" \
-            "    ARG_DEBUG=\"true\"" \
-            "    assert \"\${ARG_DEBUG}\" \"?*\" \"Missing required argument '--debug'.\"" \
-            "    declare -xg ARG_FRUIT=" \
-            "    ARG_FRUIT=\"banana\"" \
-            "    assert \"\${ARG_FRUIT}\" \"@(|banana|orange)\" \"Argument '--fruit' has unexpected value.\"" \
-            "}"
+            "./help/sample" \
+            "--fruit" \
+            "banana" \
+            "--debug" \
+            "true" 
+        
+     # acceptable value orange
+    util::yield_args \
+            . help sample --fruit orange -d \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | "./patch" \
+        | "./compile" \
+        | assert::pipe_eq_exact \
+            "./help/sample" \
+            "--fruit" \
+            "orange" \
+            "--debug" \
+            "true"
 
-    cli::yield_args \
+    # unacceptable value apple
+    util::yield_args \
+            . help sample --fruit boo -d \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | "./patch" \
+        | "./compile" \
+        | assert::pipe_eq_exact \
+            "error \"Unexpected value 'boo' for '--fruit' does not match '@(|banana|orange)'.\""
+
+    util::yield_args \
             . help \
         | "args/tokenize" \
         | "args/parse" \
@@ -151,12 +177,9 @@ test() (
         | "./patch" \
         | "./compile" \
         | assert::pipe_eq_exact \
-            "export_arguments() {" \
-            "    path='cli'" \
-            "    args=( 'ls' '--dir' './help' )" \
-            "}"
+            "echo NYI"
 
-    cli::yield_args \
+    util::yield_args \
             . help --bad-arg \
         | "args/tokenize" \
         | "args/parse" \
@@ -164,13 +187,9 @@ test() (
         | "./patch" \
         | "./compile" \
         | assert::pipe_eq_exact \
-            "export_arguments() {" \
-            "    path='cli'" \
-            "    args=( 'ls' '--dir' './help' )" \
-            "    error \"Unexpected argument '--bad-arg'.\"" \
-            "}" \
+            "error \"Unexpected argument '--bad-arg'.\""
 
-    cli::yield_args \
+    util::yield_args \
             . help -b \
         | "args/tokenize" \
         | "args/parse" \
@@ -178,11 +197,7 @@ test() (
         | "./patch" \
         | "./compile" \
         | assert::pipe_eq_exact \
-            "export_arguments() {" \
-            "    path='cli'" \
-            "    args=( 'ls' '--dir' './help' )" \
-            "    error \"Unexpected argument '-b'.\"" \
-            "}" \
+            "error \"Unexpected argument '-b'.\""
 )
 
 util::main "$@"

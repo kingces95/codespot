@@ -1,2 +1,17 @@
 #!/usr/bin/env bash
-export var=42
+
+g() {
+    echo g
+    declare -p foo
+}
+
+f() {
+    declare  foo=BAR
+
+    g
+    echo f
+    declare -p foo
+}
+
+f
+declare -p foo

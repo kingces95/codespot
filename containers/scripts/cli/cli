@@ -22,13 +22,16 @@ help() {
     echo "Command Line Interface tool."
 }
 
+entry_point() {
+    return
+}
+
 pipe() {
     local stage="$1"
     local cmd="$2"
-    local args=( ${@:3} )
 
     if (( stage <= CLI_STAGE )); then
-        "${cmd}" "${args[@]}"
+        eval "${cmd}"
     else
         while read; do echo "${REPLY}"; done
     fi
@@ -46,34 +49,22 @@ assert() {
 
 error() {
     local message=$1
-
     echo "${message}"
-    if [[ -n "${path}" ]]; then
-        "${path}" '-h'
-    fi
     exit 1
 }
 
 main() {
-    local path=
-    local -a args=()
+    local args=()
 
-    cli::yield_args "${CLI_CMD_DIR}" "$@" \
+    util::yield_args "${CLI_CMD_DIR}" "$@" \
         | pipe 0 "${CLI_DSL_ARGS_TOKENIZE}" \
         | pipe 1 "${CLI_DSL_ARGS_PARSE}" \
         | pipe 2 "${CLI_DSL_LOAD}" \
         | pipe 3 "${CLI_DSL_PATCH}" \
         | pipe 4 "${CLI_DSL_COMPILE}" \
-        | source /dev/stdin
-        # | pipe 5 "${CLI_DSL_EXECUTE}"
+        | while read; do args+=( "${REPLY}" ); done
 
-    # check and export arguments 
-    export_arguments
-
-    #su $user -c "\"${path}\""
-
-    # run the command
-    "${path}" "${args[@]}"
+    "${args}" "${args[@]:1}"
 }
 
 test() {
@@ -89,10 +80,25 @@ test() {
     ${this_dir}/dsl/patch --self-test
     ${this_dir}/dsl/compile --self-test
 
-    #${this_dir}/cli dsl help sample -hh
+    #${this_dir}/cli dsl help sample -h
 }
 
-util::main "$@"
+if [[ "${1-}" == '-h' ]]; then
+    help
+elif [[ "${1-}" == '--self-test' ]]; then
+    test
+else
+    main "$@"
+fi
+
+# demo
+# ( pwd; echo dsl; echo help; echo sample; echo -h ) \
+#   | cli dsl args tokenize \
+#   | cli dsl args parse \
+#   | cli dsl load \
+#   | cli dsl patch \
+#   | cli dsl compile \
+#   | (source /dev/stdin; entry_point)
 
 # (
 #     cd "${CLI_CMD_DIR}"
@@ -173,7 +179,7 @@ util::main "$@"
 #     cli::declare "$@"
 
 #     # error if a required variable is missing
-#     cli::require < <(cli::yield_args "${CLI_ARGS_REQUIRED[@]}")
+#     cli::require < <(util::yield_args "${CLI_ARGS_REQUIRED[@]}")
 
 #     # implement '--help'
 #     if ${ARG_HELP}; then

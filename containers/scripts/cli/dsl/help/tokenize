@@ -1,6 +1,52 @@
 #!/usr/bin/env bash
 . $(dirname ${BASH_SOURCE})/../../cli.sh
 
+help() {
+cli::unindent << EOF
+    Command
+        cli dsl help tokenize
+
+    Description
+        Read command help from stdin and emit tokens to stdout one per 
+        line in the form:
+
+            token_name line word [identifier]
+
+        Tokenize is the first step in harvesting metadata from a command's 
+        help. Metadata harvested includes names and alises of arguments,
+        whether arguments are required, have an optional default value, 
+        and/or a list of optional acceptable values.
+
+        The tokenizer has a preprocessor that exlcudes processing of
+        help sections that do not include the word "Arguments". 
+        
+        Within "Arguments" help sections the preporcessor excludes 
+        argument copy as defined as text after a colon up to 
+        "Required:", "Allowed values:", or a new command name. 
+
+        Within "Arguments" help sections: TOKEN_NAME is returned for
+        an argument which is a word preceeded by an indentation and 
+        a double dash. TOKEN_ALIAS is returned for words which are
+        preceeded by a dash. TOKEN_DEFAULT and TOKEN_ALLOWED_VALUES are
+        returned for "Default:" and "Allowed values:" respectively.
+        TOKEN_VALUE_COMMA and TOKEN_VALUE_PEROID are returned for words
+        followed by a comma or period respectively (e.g. a default 
+        value and/or allowed value lists). TOKEN_EOF is emitted last 
+        except if TOKEN_ERROR is emitted, in which case it's last.
+
+    Global Arguments
+        --help -h               : Show this message and exit.
+        --self-test             : Runs a self test.
+
+    Examples
+        Parse this help.
+            cli dsl help tokenize -h | cli dsl help tokenize
+
+        Parse the sample help.
+            cli dsl help sample -h | cli dsl help tokenize
+EOF
+}
+
 readonly LITERAL_TAB='    '
 readonly LITERAL_COLON=':'
 readonly LITERAL_DEFAULT='Default:'
@@ -10,6 +56,8 @@ readonly LITERAL_REQUIRED='[Required]'
 
 main() {
     local line
+    local word=
+    local last_word=
     local word_number=0
     local line_number=0
 
@@ -45,6 +93,7 @@ main() {
         # split the line on spaces
         words=( ${line} )
         while (( word_number < ${#words[@]} )); do
+            last_word=${word}
             word=${words[${word_number}]}
             word_number=$(( word_number + 1 ))
 
@@ -71,15 +120,13 @@ main() {
                 in_argument_copy=false
                 yield ${TOKEN_DEFAULT}
 
-            # e.g. "Allowed"
-            elif [[ "${word}" == "${LITERAL_ALLOWED}" ]]; then
-                in_argument_copy=false
-                yield ${TOKEN_ALLOWED}
-
             # e.g. "values:"
             elif [[ "${word}" == "${LITERAL_VALUES}" ]]; then
-                in_argument_copy=false
-                yield ${TOKEN_VALUES}
+
+                if [[ "${last_word}" == "${LITERAL_ALLOWED}" ]]; then
+                    in_argument_copy=false
+                    yield ${TOKEN_ALLOWED_VALUES}
+                fi
 
             # elements; e.g. 'foo' of "Allowed values: foo, bar."
             elif [[ "${word}" == *, ]]; then
@@ -106,14 +153,10 @@ test() (
         | "./tokenize" \
         | assert::pipe_eq \
             'TOKEN_NAME 5 1 run-as' \
-            'TOKEN_REQUIRED 5 2' \
-            'TOKEN_DEFAULT 6 3' \
-            'TOKEN_VALUE_PERIOD 6 4 $(whoami)' \
             'TOKEN_NAME 7 1 fruit' \
             'TOKEN_DEFAULT 7 5' \
             'TOKEN_VALUE_PERIOD 7 6 banana' \
-            'TOKEN_ALLOWED 7 7' \
-            'TOKEN_VALUES 8 1' \
+            'TOKEN_ALLOWED_VALUES 8 1' \
             'TOKEN_VALUE_COMMA 8 2 orange' \
             'TOKEN_VALUE_PERIOD 8 3 banana' \
             'TOKEN_NAME 11 1 debug' \

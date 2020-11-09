@@ -41,7 +41,7 @@ main() {
 test() (
     cd "$(dirname ${BASH_SOURCE})"
 
-    # cli::yield_args \
+    # util::yield_args \
     #         . help sample -d --help --fruit orange \
     #     | "args/tokenize" \
     #     | "args/parse" \
@@ -53,7 +53,7 @@ test() (
     # exit
     # echo ---
 
-    # cli::yield_args \
+    # util::yield_args \
     #         . help \
     #     | "args/tokenize" \
     #     | "args/parse" \
@@ -64,7 +64,7 @@ test() (
 
     # echo ---
  
-    # cli::yield_args \
+    # util::yield_args \
     #         . help --bad-arg \
     #     | "args/tokenize" \
     #     | "args/parse" \
