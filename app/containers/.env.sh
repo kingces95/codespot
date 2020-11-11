@@ -10,7 +10,7 @@ awsRegion=us-west-1
 
 # azure
 azContext=myAzureContext
-azSubscriptionId=54941adf-86af-44df-8048-60d8a3f53188
+azx::get_subscription_id=54941adf-86af-44df-8048-60d8a3f53188
 azResourceGroup=myResourceGroup
 azLocation=westus2
 azDescription="My Azure Context"

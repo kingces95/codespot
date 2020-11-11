@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/../azx.sh
+
+help() (
+util::unindent << EOF
+    Command
+        app resource wait : Wait until a query of a resource satisfies a JMESPath query.
+
+    Resource Id Arguments
+        --ids                   : Resource IDs. If provided, no other
+                                "Resource Id" arguments should be specified.
+        --resource-group        : Name of resource group.
+        --type                  : The resource type (Ex: 'Microsoft.Provider/resC').
+        --name                  : The resource name. (Ex: myC). If ommitted, type must 
+                                be 'Microsoft.Resources/resourceGroups'.
+
+    Arguments
+        --query                 : The query to make against the resource's properties.
+        --value                 : The value to compare against the query result.
+        --interval              : The polling interval in seconds. Default: 5.
+EOF
+)
+
+declareArgs $@
+
+: ${value:?}
+: ${query:?}
+: ${interval=5}
+
+id=$(azx resource id create \
+    --ids $ids \
+    --resource-group $resourceGroup \
+    --type $type \
+    --name $name)
+
+tput sc
+while true
+do
+    current=$(azx::tsv resource show --ids $id --query $query)
+
+    tput rc
+    log $current
+
+    if [[ ! $? -eq 0 || "$value" != "$current" ]]
+    then
+        sleep $interval
+        continue
+    fi
+
+    exit 0
+done

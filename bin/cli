@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-$(dirname ${BASH_SOURCE})/../containers/scripts/cli/cli "$@"

@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/vscs.sh
+
+help() (
+util::unindent << EOF
+    Command
+        vscs install : Install a version of Visual Studio Code Server.
+
+    Arguments
+        --commit        [Required]  : Commit to install. (e.g. d2e414d9e4239a252d1ab117bd7067f125afd80a)
+        --build         [Required]  : Specify 'stable' or 'insiders'. Allowed values: stable,
+                                        insiders. Default: stable.
+        --os            [Required]  : Target operating system. Default: linux.
+        --architecture  [Required]  : Target architecture. Default: x64.
+        --dry-run                   : Show the commands that would be run.
+        --verbose -v                : Enable verbose logging during file download.
+
+    Global Arguments
+        --help -h                   : Show this message and exit.
+        --debug -x                  : Echo the commands being executed.
+        --self-test                 : Runs a self test.
+        --tokenize-help             : Tokenize help (used during script development)
+        --parse-help                : Parse help (used during script development)
+EOF
+)
+
+main() {
+    local server_dir
+    local commit_dir
+    local url
+    local wget_verbosity=
+
+    vscs::declare_dirs
+    : ${server_dir:?}
+    : ${commit_dir:?}
+
+    local url=${VSCS_HOST}/commit:${arg_commit}/server-${arg_os}-${arg_architecture}
+
+    case "${arg_build}" in
+        stable) url="${url}/stable" ;;
+        *) url="${url}/insider" ;;
+    esac
+
+    if [[ ! $arg_verbose == 'true' ]]; then
+        wget_verbosity='-nv'
+    fi
+
+    util::unindent << EOF | util::source
+    mkdir -p ${commit_dir}
+    wget ${wget_verbosity} ${url} -O ${VSCS_TARGZC_TEMP}
+    tar -x -f ${VSCS_TARGZC_TEMP} --strip-components 1 -C ${commit_dir}
+    rm ${VSCS_TARGZC_TEMP}
+EOF
+}
+
+util::main "$@"

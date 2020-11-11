@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/cli.sh
+
+main() {
+    return
+}
+
+test() (
+    return
+)
+
+util::main "$@"

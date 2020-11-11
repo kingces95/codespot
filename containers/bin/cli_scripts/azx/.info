@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/azx.sh
+
+help() {
+util::unindent << EOF
+    Command
+        azx
+
+    Global Arguments
+        --help -h               : Show this message and exit.
+        --self-test             : Runs a self test.
+EOF
+}
+
+main() {
+    echo version 0.1.0
+    echo licence MIT
+    echo description Command extensions to the az cli.
+}
+
+test() (
+    return
+)
+
+util::main "$@"

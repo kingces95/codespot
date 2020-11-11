@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/../../azx.sh
+
+help() (
+util::unindent << EOF
+    Command
+        app resource id create : Create a resource id.
+
+    Resource Id Arguments
+        --resource-group     [Required] : Name of resource group.
+        --type               [Required] : The resource type (Ex: 'Microsoft.Provider/resC').
+                                            Default: Microsoft.Resources/resourceGroups.
+        --name                          : The resource name. (Ex: myC).
+
+    Global Arguments
+        --help -h                       : Show this message and exit.
+
+EOF
+)
+
+main() {
+    local id=/subscriptions/$(azx::get_subscription_id)/resourceGroups/${arg_resource_group}
+
+    if [[ "$arg_type" != "${AZX_TYPE_RESOURCE_GROUP}" ]]; then
+        : ${arg_name:?}
+
+        id=${id}/providers/${arg_type}/${arg_name}
+    fi
+
+    echo ${id}
+}
+
+util::main "$@"

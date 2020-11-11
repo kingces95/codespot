@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/../cli.sh
+
+help() {
+util::unindent << EOF
+    Command
+        cli dsl patch
+
+    Global Arguments
+        --help -h               : Show this message and exit.
+        --self-test             : Runs a self test.
+EOF
+}
+
+main() {
+    patch \
+        | sed s/^help/_help/ \
+        | sed s/^run-as/_run-as/ \
+        | sort --key=1,1 --key=2,2n
+}
+
+patch() {
+    local -A aliases 
+
+    # copy productions harvesting and patching alises along the way
+    while read key production production_name identifier; do
+
+        # by construction, all PRODUCTION_HELP_ALIAS appear before use of any aliases
+        if (( production == PRODUCTION_HELP_ALIAS )); then
+            # e.g. "help 2 PRODUCTION_HELP_ALIAS h" -> [h]=help
+            aliases[${identifier}]=${key}
+
+        # test if sort key is an alias
+        elif [[ -n ${aliases[${key}]+test} ]]; then
+    
+            # remap sort key
+            # e.g. "h    6 PRODUCTION_ARG_VALUE true" -> 
+            #      "help 6 PRODUCTION_ARG_VALUE true"
+            key=${aliases[${key}]}
+
+            # remap PRODUCTION_ARG_ALIAS -> PRODUCTION_ARG_NAME
+            # e.g. "help 5 PRODUCTION_ARG_ALIAS h" ->
+            #      "help 4 PRODUCTION_ARG_NAME  help"
+            if (( production == PRODUCTION_ARG_ALIAS )); then
+                production=${PRODUCTION_ARG_NAME}
+                production_name=${PRODUCTIONS[${production}]}
+                identifier=$key
+            fi
+        fi
+
+        echo ${key} ${production} ${production_name} ${identifier} 
+    done
+}
+
+test() (
+    cd "$(dirname ${BASH_SOURCE})"
+
+    util::yield_args \
+            . help sample -d --help --foo-bar \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | "./patch" \
+        | assert::pipe_eq \
+            '_help 3 PRODUCTION_HELP_NAME help' \
+            '_help 4 PRODUCTION_HELP_ALIAS h' \
+            '_help 6 PRODUCTION_ARG_NAME help' \
+            '_help 8 PRODUCTION_ARG_VALUE true' \
+            '_run-as 3 PRODUCTION_HELP_NAME run-as' \
+            'debug 3 PRODUCTION_HELP_NAME debug' \
+            'debug 4 PRODUCTION_HELP_ALIAS d' \
+            'debug 6 PRODUCTION_ARG_NAME debug' \
+            'debug 8 PRODUCTION_ARG_VALUE true' \
+            'debug 9 PRODUCTION_HELP_REQUIRED' \
+            'foo-bar 6 PRODUCTION_ARG_NAME foo-bar' \
+            'foo-bar 8 PRODUCTION_ARG_VALUE true' \
+            'fruit 3 PRODUCTION_HELP_NAME fruit' \
+            'fruit 5 PRODUCTION_HELP_DEFAULT banana' \
+            'fruit 10 PRODUCTION_HELP_ALLOWED' \
+            'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE banana' \
+            'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE orange' \
+            'fruit 12 PRODUCTION_HELP_ALLOWED_END' \
+            '~ 1 PRODUCTION_ARG_FILE ./help/sample'
+)
+
+util::main "$@"

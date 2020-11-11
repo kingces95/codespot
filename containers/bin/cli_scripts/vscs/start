@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/vscs.sh
+
+help() (
+util::unindent << EOF
+    Command
+        vscs server start : Start the server.
+
+    Arguments
+        --commit     [Required] : Commit to install. (e.g. d2e414d9e4239a252d1ab117bd7067f125afd80a)
+        --build      [Required] : Build flavor. Allowed values: stable, insiders. 
+                                    Default: stable.
+        --run-as                : Name of user to use to launch server.
+
+    Debug Arguments
+        --dry-run               : Show the commands that would be run.
+
+    Global Arguments
+        --help -h               : Show this message and exit.
+        --self-test             : Runs a self test.
+        --tokenize-help         : Tokenize help (used during script development)
+        --parse-help            : Parse help (used during script development)
+EOF
+)
+
+main() {
+    vscs::declare_dirs
+    : ${server_dir:?}
+    : ${commit_dir:?}
+
+    util::unindent << EOF | util::source
+    ${server_dir}/bin/${arg_commit}/server.sh \
+        --host=127.0.0.1 \
+        --enable-remote-auto-shutdown \
+        --port=0 \
+        &> ${server_dir}/.${arg_commit}.log \
+        < /dev/null &
+EOF
+}
+
+util::main "$@"

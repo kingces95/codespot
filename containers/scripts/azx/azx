@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-CLI_PATH="$0" cli "$@"a

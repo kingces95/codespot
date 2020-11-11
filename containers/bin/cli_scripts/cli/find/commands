@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/../cli.sh
+
+help() {
+util::unindent << EOF
+    Command
+        cli find commands
+
+    Arguments
+        --dir -d                : Directory to search.
+        --recursive  -r         : Recurse.
+
+    Global Arguments
+        --help -h               : Show this message and exit.
+        --self-test             : Runs a self test.
+EOF
+}
+
+main() (
+    cd "${arg_dir}"
+    for entry in *; do 
+        if [ -f "${entry}" ] && [ -x "${entry}" ]; then
+            echo "$(pwd)/${entry}"
+        fi
+    done
+
+    if [[ ! "${arg_recursive}" == 'true' ]]; then
+        exit
+    fi
+
+    for entry in *; do 
+        if [ -d "${entry}" ] && [ -x "${entry}" ]; then
+            cli find commands --dir "$(pwd)/${entry}" --recursive
+        fi
+    done
+)
+
+test() {
+    return
+}
+
+util::main "$@"

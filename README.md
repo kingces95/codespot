@@ -51,7 +51,7 @@ az account show
    * select `/Users/<user>/.ssh/config`
    * add the following the the config substituting `ip` with the IP of the container, and save
 ```
-Host myRemote
+VSCS_HOST myRemote
   HostName <ip>
   User vscode
   UserKnownHostsFile ~/.ssh/known_host/<ip>

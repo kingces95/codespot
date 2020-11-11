@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+. $(dirname ${BASH_SOURCE})/vscs.sh
+
+help() {
+util::unindent << EOF
+    Command
+        vscs
+
+    Global Arguments
+        --help -h               : Show this message and exit.
+        --self-test             : Runs a self test.
+EOF
+}
+
+main() {
+    echo version 0.1.0
+    echo licence MIT
+    echo description Visual Studio Code Server CLI.
+}
+
+test() (
+    return
+)
+
+util::main "$@"
