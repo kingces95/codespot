@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
+source /dev/stdin < <(cli shim)
 . $(dirname ${BASH_SOURCE})/cli.sh
+
+help() {
+util::unindent << EOF
+    Command
+
+    Summary
+        
+    Description
+
+    Arguments
+
+    Global Arguments
+        --help -h       : Show this message and exit.
+        --self-test     : Runs a self test.
+EOF
+}
 
 main() {
     return
@@ -9,4 +26,4 @@ test() (
     return
 )
 
-util::main "$@"
+shim "$@"

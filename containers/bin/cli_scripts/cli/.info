@@ -56,4 +56,4 @@ test() {
     #         "    ${line_number} main $0"
 }
 
-util::main "$@"
+shim "$@"

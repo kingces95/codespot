@@ -24,4 +24,4 @@ main() {
     fi
 }
 
-util::main "$@"
+shim "$@"

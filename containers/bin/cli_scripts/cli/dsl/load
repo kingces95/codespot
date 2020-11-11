@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source /dev/stdin < <(cli shim)
 . $(dirname ${BASH_SOURCE})/../cli.sh
 
 help() {
@@ -102,4 +103,4 @@ test() (
             ". 13 PRODUCTION_ERROR Unexpected path './bad/path' is neither an executable file nor a directory."
 )
 
-util::main "$@"
+shim "$@"

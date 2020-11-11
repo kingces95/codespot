@@ -9,29 +9,22 @@ VSCS_DIR_STABLE=~/.vscode-server
 VSCS_DIR_INSIDER=${VSCS_DIR_STABLE}-insiders
 VSCS_TARGZC_TEMP=/tmp/vscode.tar.gzc
 
-vscs::declare_dirs() {
-    : ${arg_commit:?}
+vscs::declare_server_dirs() {
     : ${arg_build:?}
 
-    if [[ ${arg_build} == stable ]]
-    then
+    if [[ "${arg_build}" == 'stable' ]]; then
         server_dir=${VSCS_DIR_STABLE}
     else
         server_dir=${VSCS_DIR_INSIDER}
     fi
-
-    commit_dir=${server_dir}/bin/${arg_commit}
 }
 
-vscs::evalCmd() {
-    cmd=${1:?}
+vscs::declare_dirs() {
+    : ${arg_commit:?}
+    : ${arg_build:?}
 
-    if $dryRun
-    then 
-        echo $(whoami) $ $cmd
-    else
-        eval $cmd >&2
-    fi
+    vscs::declare_server_dirs
+    : ${server_dir:?}
 
-    exit 0
+    commit_dir=${server_dir}/bin/${arg_commit}
 }

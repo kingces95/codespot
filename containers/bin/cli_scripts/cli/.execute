@@ -68,6 +68,7 @@ test() {
 }
 
 case "${1-}" in
-  '--self-test') cli self-test --dir "$0" ;;
-  *) main "$@"
+    'shim') shift; $(dirname ${BASH_SOURCE})/shim "$@" ;;
+    '--self-test') cli self-test --dir "$0" ;;
+    *) main "$@"
 esac

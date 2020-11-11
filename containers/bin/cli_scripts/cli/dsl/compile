@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source /dev/stdin < <(cli shim)
 . $(dirname ${BASH_SOURCE})/../cli.sh
 
 help() {
@@ -79,7 +80,7 @@ main() {
                 allowed_values+=( "${identifier}" )
             elif (( production == PRODUCTION_HELP_ALLOWED_END )); then
                 blob="@(|${allowed_values[@]})"
-                blob="${blob/ /|}"
+                blob="${blob// /|}"
 
                 if [[ ! "${arguments[${name}]}" == $blob ]]; then
                     error "Unexpected value '${arguments[${name}]}' for '--${name}' does not match '$blob'."
@@ -224,4 +225,4 @@ test() (
             "Unexpected argument '-b'."
 )
 
-util::main "$@"
+shim "$@"

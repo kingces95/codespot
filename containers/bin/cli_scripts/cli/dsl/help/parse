@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source /dev/stdin < <(cli shim)
 . $(dirname ${BASH_SOURCE})/../../cli.sh
 
 help() {
@@ -143,4 +144,4 @@ test() {
             'help 4 PRODUCTION_HELP_ALIAS h' 
 }
 
-util::main "$@"
+shim "$@"

@@ -10,12 +10,23 @@ set -e
 set -u 
 # set -o pipefail
 
+# If set, the pattern ‘**’ used in a filename expansion context will match all 
+# files and zero or more directories and subdirectories. If the pattern is followed 
+# by a ‘/’, only directories and subdirectories match.
 shopt -s globstar
+
+# If the extglob shell option is enabled using the shopt builtin, 
+# several extended pattern matching operators are recognized. 
 shopt -s extglob
+
+# If set, Bash allows filename patterns which match 
+# no files to expand to a null string, rather than themselves.
+shopt -s nullglob 
 
 # loader reflection
 util::this_dir() { echo $(dirname ${BASH_SOURCE[1]}); }
 util::this_file() { echo "${BASH_SOURCE[1]}"; }
+util::this_function() { echo "${FUNCNAME[1]}"; }
 util::caller_file() { echo "${BASH_SOURCE[2]}"; }
 util::caller_dir() { echo $(dirname ${BASH_SOURCE[2]}); }
 util::callstack() (
@@ -78,91 +89,5 @@ util::source() {
         if [[ "${arg_debug:=}" == "true" ]]; then set -x; fi
         source /dev/stdin
         if [[ "${arg_debug:=}" == "true" ]]; then set +x; fi
-    fi
-}
-
-# default implementations
-help() { 
-    echo "Unexpected failure to provide implementation of 'help'."
-}
-test() { 
-    echo "Unexpected failure to provide implementation of 'test'."
-}
-
-# shim
-util::arg_to_variable_name() {
-    name=$1
-    name="${name#--}"
-    name="arg_${name/-/_}"
-    echo "${name}"
-}
-util::escape_args_then_call_as() {
-    local user=$1
-    shift
-
-    local -a args
-    for i in "$@"; do
-        args+=( $(printf %q "${i}") )
-    done
-
-    sudo su "${user}" -c "${args[*]}"
-}
-util::main() {
-
-    # declare well known variables
-    : ${arg_help:=false}
-    : ${arg_tokenize_help:=false}
-    : ${arg_parse_help:=false}
-    : ${arg_self_test:=false}
-    : ${arg_run_as:=}
-
-    # resolve well known aliases
-    if [[ "${1-}" == '-h' ]]; then
-        set -- '--help'
-    fi
-
-    # declare variables passed via the command line    
-    local name
-    local value
-    local args=( "$@" )
-    until (( $# == 0 )); do
-        name="$1"; shift
-
-        # support flags; e.g. This '--help true' is the same '--help' 
-        if (( $# == 0 )) || [[ "$1" == --* ]]; then
-            value="true"
-        else
-            value="$1"; shift
-        fi
-
-        # map argument names to bash names; e.g. '--foo' ==> 'ARG_FOO'
-        name=$(util::arg_to_variable_name ${name})
-        
-        # declare non-exported, but global, bash variables
-        declare -g "${name}"="${value}"
-    done
-
-    # implement well known features
-    if [[ -n "${arg_run_as}" ]] && [[ ! "${arg_run_as}" == "$(whoami)" ]]; then
-        util::escape_args_then_call_as "${arg_run_as}" "$0" "${args[@]}"
-    elif [[ "${arg_tokenize_help}" == 'true' ]]; then 
-        help | cli dsl help tokenize
-    elif [[ "${arg_parse_help}" == 'true' ]]; then 
-        help | cli dsl help tokenize | cli dsl help parse
-    elif [[ "${arg_help}" == 'true' ]]; then 
-        help
-    elif [[ "${arg_self_test}" == 'true' ]]; then 
-        test
-    else
-        # *really* clean up
-        unset name
-        unset value
-        unset args
-        unset arg_run_as
-        unset arg_help
-        unset arg_tokenize_help
-        unset arg_parse_help
-        unset arg_self_test
-        main
     fi
 }

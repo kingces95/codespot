@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+source /dev/stdin < <(cli shim)
+
 help() (
 util::unindent << EOF
     Command

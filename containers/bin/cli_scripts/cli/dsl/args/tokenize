@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source /dev/stdin < <(cli shim)
 . $(dirname ${BASH_SOURCE})/../../cli.sh
 
 help() {
@@ -87,4 +88,4 @@ test() (
             "TOKEN_ERROR 1 5 Unexpected argument '-run-as'."
 )
 
-util::main "$@"
+shim "$@"

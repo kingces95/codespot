@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source /dev/stdin < <(cli shim)
 . $(dirname ${BASH_SOURCE})/vscs.sh
 
 help() {
@@ -13,13 +14,15 @@ EOF
 }
 
 main() {
-    echo version 0.1.0
-    echo licence MIT
-    echo description Visual Studio Code Server CLI.
+util::unindent << EOF
+    version 0.1.0
+    licence MIT
+    description Visual Studio Code Server CLI.
+EOF
 }
 
 test() (
     return
 )
 
-util::main "$@"
+shim "$@"

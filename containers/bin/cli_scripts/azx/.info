@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+source /dev/stdin < <(cli shim)
 . $(dirname ${BASH_SOURCE})/azx.sh
 
 help() {
@@ -22,4 +23,4 @@ test() (
     return
 )
 
-util::main "$@"
+shim "$@"

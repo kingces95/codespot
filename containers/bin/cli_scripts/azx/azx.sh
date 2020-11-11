@@ -1,4 +1,3 @@
-. $(dirname ${BASH_SOURCE})/../util.sh
 . $(util::this_dir)/../assert/index.sh
 
 AZX_TYPE_RESOURCE_GROUP=Microsoft.Resources/resourceGroups
