@@ -26,9 +26,9 @@ patch() {
     # copy productions harvesting and patching alises along the way
     while read key production production_name identifier; do
 
-        # by construction, all PRODUCTION_HELP_ALIAS appear before use of any aliases
-        if (( production == PRODUCTION_HELP_ALIAS )); then
-            # e.g. "help 2 PRODUCTION_HELP_ALIAS h" -> [h]=help
+        # by construction, all PRODUCTION_ALIAS appear before use of any aliases
+        if (( production == PRODUCTION_ALIAS )); then
+            # e.g. "help 2 PRODUCTION_ALIAS h" -> [h]=help
             aliases[${identifier}]=${key}
 
         # test if sort key is an alias
@@ -53,7 +53,7 @@ patch() {
     done
 }
 
-test() (
+self_test() (
     cd "$(dirname ${BASH_SOURCE})"
 
     util::yield_args \
@@ -63,24 +63,24 @@ test() (
         | "./load" \
         | "./patch" \
         | assert::pipe_eq \
-            '_help 3 PRODUCTION_HELP_NAME help' \
-            '_help 4 PRODUCTION_HELP_ALIAS h' \
+            '_help 3 PRODUCTION_NAME help' \
+            '_help 4 PRODUCTION_ALIAS h' \
             '_help 6 PRODUCTION_ARG_NAME help' \
             '_help 8 PRODUCTION_ARG_VALUE true' \
-            '_run-as 3 PRODUCTION_HELP_NAME run-as' \
-            'debug 3 PRODUCTION_HELP_NAME debug' \
-            'debug 4 PRODUCTION_HELP_ALIAS d' \
+            '_run-as 3 PRODUCTION_NAME run-as' \
+            'debug 3 PRODUCTION_NAME debug' \
+            'debug 4 PRODUCTION_ALIAS d' \
             'debug 6 PRODUCTION_ARG_NAME debug' \
             'debug 8 PRODUCTION_ARG_VALUE true' \
-            'debug 9 PRODUCTION_HELP_REQUIRED' \
+            'debug 9 PRODUCTION_REQUIRED' \
             'foo-bar 6 PRODUCTION_ARG_NAME foo-bar' \
             'foo-bar 8 PRODUCTION_ARG_VALUE true' \
-            'fruit 3 PRODUCTION_HELP_NAME fruit' \
-            'fruit 5 PRODUCTION_HELP_DEFAULT banana' \
-            'fruit 10 PRODUCTION_HELP_ALLOWED' \
-            'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE banana' \
-            'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE orange' \
-            'fruit 12 PRODUCTION_HELP_ALLOWED_END' \
+            'fruit 3 PRODUCTION_NAME fruit' \
+            'fruit 5 PRODUCTION_DEFAULT banana' \
+            'fruit 10 PRODUCTION_ALLOWED' \
+            'fruit 11 PRODUCTION_ALLOWED_VALUE banana' \
+            'fruit 11 PRODUCTION_ALLOWED_VALUE orange' \
+            'fruit 12 PRODUCTION_ALLOWED_END' \
             '~ 1 PRODUCTION_ARG_FILE ./help/sample'
 )
 

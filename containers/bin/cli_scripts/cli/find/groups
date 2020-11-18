@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 source /dev/stdin < <(cli shim)
-. $(dirname ${BASH_SOURCE})/../cli.sh
 
 main() {
         

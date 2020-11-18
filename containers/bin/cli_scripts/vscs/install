@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source /dev/stdin < <(cli shim)
-. $(dirname ${BASH_SOURCE})/vscs.sh
+. $(dirname ${BASH_SOURCE})/.sh
 
 help() (
 util::unindent << EOF

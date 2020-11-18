@@ -20,7 +20,7 @@ build() (
     docker tag $name $dockerHubName/githubtainer-$name
     docker push $dockerHubName/githubtainer-$name
 
-    test() (
+    self_test() (
         [ $(docker ps --filter name=$name -q) ] && docker rm $name --force
 
         docker run -dit \

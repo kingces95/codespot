@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 source /dev/stdin < <(cli shim)
-. $(dirname ${BASH_SOURCE})/vscs.sh
-
-references() {
-    echo 
-}
-. $(dirname ${BASH_SOURCE})/vscs.sh
+source /dev/stdin < <(vscs .dir)
+. $(dirname ${BASH_SOURCE})/../util.sh
 
 help() (
     util::unindent << EOF

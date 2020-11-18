@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
 source /dev/stdin < <(cli shim)
-. $(dirname ${BASH_SOURCE})/../cli.sh
 
 help() {
-util::unindent << EOF
-    Command
-        cli find commands
+cat << EOF
+Command
+    cli find commands
 
-    Arguments
-        --dir -d                : Directory to search.
-        --recursive  -r         : Recurse.
+Arguments
+    --dir -d                : Directory to search.
+    --recursive  -r  [Flag] : Recurse.
 
-    Global Arguments
-        --help -h               : Show this message and exit.
-        --self-test             : Runs a self test.
+Global Arguments
+    --help -h        [Flag] : Show this message and exit.
+    --self-test      [Flag] : Runs a self test.
 EOF
 }
 
@@ -35,9 +34,5 @@ main() (
         fi
     done
 )
-
-test() {
-    return
-}
 
 shim "$@"

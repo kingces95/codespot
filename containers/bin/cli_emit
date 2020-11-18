@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+source /dev/stdin < <(cli shim)
+source /dev/stdin < <(cli_util)
+
+main() {
+    cli::export emit
+}
+
+emit::new_line() {
+    echo
+}
+
+emit::comment() {
+    echo "# $1"
+}
+
+emit::indented() {
+    while read; do 
+        echo "${CLI_DSL_LITERAL_TAB}${REPLY}"
+    done
+}
+
+emit::function() {
+    echo "$1() {"
+    emit::indented
+    echo "}"
+}
+
+emit::shift() {
+    echo "shift"
+}
+
+emit::declare() {
+    echo -n "declare $1 $2"
+    if (( $# == 3 )); then echo -n "=\"$3\""; fi
+    echo
+}
+
+emit::declare_global() {
+    emit::declare -g $1 "${2-}"
+}
+
+emit::variable_required() {
+    echo ": \${$1?$2}"
+}
+
+emit::while() {
+    echo "while $1; do"
+    emit::indented
+    echo "done"
+}
+
+emit::case_statement() {
+    echo "case \"$1\" in"
+    emit::indented
+    echo "esac"
+}
+
+emit::case_raw() {
+    echo "$1)"
+    emit::indented
+    echo ";;" 
+}
+
+emit::case() {
+    emit::case "\'$1\'"
+}
+
+emit::case_default() {
+    emit::case_raw '*'
+}
+
+emit::case_inline() {
+    read
+    echo "\'$1\') $REPLY ;;"
+}
+
+emit::case_noop() {
+    echo "\'$1\') ;;"
+}
+
+emit::assign() {
+    echo "$1=$2"
+}
+
+emit::assign_string() {
+    emit::assign "$1" "\"$2\""
+}
+
+emit::error() {
+    echo echo \""$1"\"
+    echo "exit 1"
+}
+
+emit::inline() {
+    local delimiter=
+    while read; do
+        echo -n "${delimiter}${REPLY}"
+        delimiter='; '
+    done
+    echo
+}
+
+emit::call() {
+    echo -n "$1"
+    for i in "${@:2}"; do
+        echo -n " "
+        echo -n "\"$i\""
+    done
+    echo
+}
+
+emit::if() {
+    echo "if $1; then"
+    emit::indented
+    echo "fi"
+}
+
+emit::if_empty() {
+    emit::if "[[ -z \"\${$1}\" ]]"
+}
+
+initialize() {
+    util::initialize "$@"
+}
+
+cli::shim "$@"

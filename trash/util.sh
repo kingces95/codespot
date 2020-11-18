@@ -21,7 +21,7 @@ shopt -s extglob
 
 # If set, Bash allows filename patterns which match 
 # no files to expand to a null string, rather than themselves.
-shopt -s nullglob 
+#shopt -s nullglob 
 
 # loader reflection
 util::this_dir() { echo $(dirname ${BASH_SOURCE[1]}); }
@@ -89,5 +89,15 @@ util::source() {
         if [[ "${arg_debug:=}" == "true" ]]; then set -x; fi
         source /dev/stdin
         if [[ "${arg_debug:=}" == "true" ]]; then set +x; fi
+    fi
+}
+
+cli::assert() {
+    local variable=$1
+    local blob=$2
+    local message=$3
+
+    if [[ ! "${variable}" == $blob ]]; then
+        error "${message}"
     fi
 }

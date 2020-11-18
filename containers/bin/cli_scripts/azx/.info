@@ -19,7 +19,7 @@ main() {
     echo description Command extensions to the az cli.
 }
 
-test() (
+self_test() (
     return
 )
 

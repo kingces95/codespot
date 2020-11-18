@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+source /dev/stdin < <(cli shim)
+#. $(dirname ${BASH_SOURCE})/vscs.sh
+
+help() {
+cat << EOF
+Command
+    vscs - Visual Studio Code Server CLI
+
+Global Arguments
+    --help -h               : Show this message and exit.
+    --self-test             : Runs a self test.
+
+Attributes
+    version 0.1.0
+    license MIT
+EOF
+}
+
+cli::export::function() {
+    declare -f $1
+}
+
+cli::export::variable() {
+    echo "$1"="$2"
+}
+
+main() {
+    cli::export::variable VSCS_HOST https://update.code.visualstudio.com
+    cli::export::variable VSCS_DIR_STABLE ~/.vscode-server
+    cli::export::variable VSCS_DIR_INSIDER ${VSCS_DIR_STABLE}-insiders
+    cli::export::variable VSCS_TARGZC_TEMP /tmp/vscode.tar.gzc
+
+    cli::export::function vscs::declare_server_dirs
+    cli::export::function vscs::declare_dirs
+}
+
+vscs::declare_server_dirs() {
+    : ${arg_build:?}
+
+    if [[ "${arg_build}" == 'stable' ]]; then
+        server_dir=${VSCS_DIR_STABLE}
+    else
+        server_dir=${VSCS_DIR_INSIDER}
+    fi
+}
+
+vscs::declare_dirs() {
+    : ${arg_commit:?}
+    : ${arg_build:?}
+
+    vscs::declare_server_dirs
+    : ${server_dir:?}
+
+    commit_dir=${server_dir}/bin/${arg_commit}
+}
+
+shim "$@"

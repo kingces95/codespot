@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+source /dev/stdin < <(cli .dir)
+
+help() {
+    cat << EOF
+Command
+    cli dsl load
+
+Global Arguments
+    --help -h               : Show this message and exit.
+    --self-test             : Runs a self test.
+EOF
+}
+
+# used to debug a stage in the loader pipeline
+: ${CLI_STAGE:=100}
+
+readonly CLI_DSL_DIR=$(dirname ${BASH_SOURCE[0]})
+readonly CLI_DSL_TOKENIZE="${CLI_DSL_HELP_DIR}/tokenize"
+readonly CLI_DSL_PARSE="${CLI_DSL_HELP_DIR}/parse"
+readonly CLI_DSL_CODE_GEN="${CLI_DSL_HELP_DIR}/code_gen"
+
+pipe() {
+    local stage="$1"
+    local cmd="$2"
+
+    if (( stage < CLI_STAGE )); then
+        eval "${cmd}"
+    else
+        if (( stage == CLI_STAGE )); then
+            eval "${cmd}" > /dev/stderr
+        fi
+        echo ":"
+    fi
+}
+
+main() {
+    pipe 0 "${CLI_DSL_TOKENIZE}" \
+        | pipe 1 "${CLI_DSL_PARSE}" \
+        | pipe 2 "${CLI_DSL_CODE_GEN}"
+}
+
+self_test() (
+    cd "$(dirname ${BASH_SOURCE})"
+
+    util::yield_args \
+            . help sample \
+            -d --help --foo-bar \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | assert::pipe_eq \
+            'run-as 3 PRODUCTION_NAME run-as' \
+            'fruit 3 PRODUCTION_NAME fruit' \
+            'fruit 5 PRODUCTION_DEFAULT banana' \
+            'fruit 10 PRODUCTION_ALLOWED' \
+            'fruit 11 PRODUCTION_ALLOWED_VALUE orange' \
+            'fruit 11 PRODUCTION_ALLOWED_VALUE banana' \
+            'fruit 12 PRODUCTION_ALLOWED_END' \
+            'debug 3 PRODUCTION_NAME debug' \
+            'debug 4 PRODUCTION_ALIAS d' \
+            'debug 9 PRODUCTION_REQUIRED' \
+            'help 3 PRODUCTION_NAME help' \
+            'help 4 PRODUCTION_ALIAS h' \
+            '~ 1 PRODUCTION_ARG_FILE ./help/sample' \
+            'd 7 PRODUCTION_ARG_ALIAS d' \
+            'd 8 PRODUCTION_ARG_VALUE true' \
+            'help 6 PRODUCTION_ARG_NAME help' \
+            'help 8 PRODUCTION_ARG_VALUE true' \
+            'foo-bar 6 PRODUCTION_ARG_NAME foo-bar' \
+            'foo-bar 8 PRODUCTION_ARG_VALUE true'
+
+    util::yield_args \
+            . help \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | assert::pipe_eq \
+            '~ 2 PRODUCTION_ARG_DIR ./help'
+
+    util::yield_args \
+            . bad path \
+        | "args/tokenize" \
+        | "args/parse" \
+        | "./load" \
+        | assert::pipe_eq \
+            ". 13 PRODUCTION_ERROR Unexpected path './bad/path' is neither an executable file nor a directory."
+)
+
+initialize() {
+    while (( $# > 0 )); do
+        case $1 in
+            '-h') arg_help=true ;;
+            '--help') arg_help=true ;;
+            '--self-test') arg_self_test=true ;;
+            *) echo "Unexpected argument $1."; exit 1 ;;
+        esac
+
+        shift
+    done
+}
+
+cli::shim "$@"

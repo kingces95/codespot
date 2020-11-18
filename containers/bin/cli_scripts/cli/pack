@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
 source /dev/stdin < <(cli shim)
-. $(dirname ${BASH_SOURCE})/cli.sh
 
 help() {
-util::unindent << EOF
-    Command
+    cat << EOF
+Command
 
-    Summary
-        
-    Description
+Summary
+    
+Description
 
-    Arguments
+Arguments
 
-    Global Arguments
-        --help -h       : Show this message and exit.
-        --self-test     : Runs a self test.
+Global Arguments
+    --help -h       : Show this message and exit.
+    --self-test     : Runs a self test.
 EOF
 }
 
@@ -22,8 +21,8 @@ main() {
     return
 }
 
-test() (
+self_test() (
     return
 )
 
-shim "$@"
+cli::shim "$@"

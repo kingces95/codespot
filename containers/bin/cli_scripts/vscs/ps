@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 source /dev/stdin < <(cli shim)
-. $(dirname ${BASH_SOURCE})/vscs.sh
+source /dev/stdin < <(vscs .dir)
+. $(dirname ${BASH_SOURCE})/../util.sh
 
 help() (
 util::unindent << EOF
@@ -8,7 +9,7 @@ util::unindent << EOF
         vscs ps : Yield the pid of a running Visual Studio Code Server.
 
     Arguments
-        --commit -c     [Required]  : Commit to uninstall. (e.g. d2e414d9e4239a252d1ab117bd7067f125afd80a)
+        --commit -c     [required]  : Commit of running server.
         --build -b      [Required]  : Server build flavor. Allowed values: stable,
                                         insiders. Default: stable.
 
@@ -19,6 +20,8 @@ util::unindent << EOF
     Debug Arguments
         --debug -x                  : Echo the commands being executed.
         --dry-run                   : Show the commands that would be run.
+        --tokenize-help             : Tokenize help
+        --parse-help                : Parse help
 EOF
 )
 

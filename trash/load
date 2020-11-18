@@ -56,7 +56,7 @@ main() {
     while read; do echo "${REPLY}"; done
 }
 
-test() (
+self_test() (
     cd "$(dirname ${BASH_SOURCE})"
 
     util::yield_args \
@@ -66,18 +66,18 @@ test() (
         | "args/parse" \
         | "./load" \
         | assert::pipe_eq \
-            'run-as 3 PRODUCTION_HELP_NAME run-as' \
-            'fruit 3 PRODUCTION_HELP_NAME fruit' \
-            'fruit 5 PRODUCTION_HELP_DEFAULT banana' \
-            'fruit 10 PRODUCTION_HELP_ALLOWED' \
-            'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE orange' \
-            'fruit 11 PRODUCTION_HELP_ALLOWED_VALUE banana' \
-            'fruit 12 PRODUCTION_HELP_ALLOWED_END' \
-            'debug 3 PRODUCTION_HELP_NAME debug' \
-            'debug 4 PRODUCTION_HELP_ALIAS d' \
-            'debug 9 PRODUCTION_HELP_REQUIRED' \
-            'help 3 PRODUCTION_HELP_NAME help' \
-            'help 4 PRODUCTION_HELP_ALIAS h' \
+            'run-as 3 PRODUCTION_NAME run-as' \
+            'fruit 3 PRODUCTION_NAME fruit' \
+            'fruit 5 PRODUCTION_DEFAULT banana' \
+            'fruit 10 PRODUCTION_ALLOWED' \
+            'fruit 11 PRODUCTION_ALLOWED_VALUE orange' \
+            'fruit 11 PRODUCTION_ALLOWED_VALUE banana' \
+            'fruit 12 PRODUCTION_ALLOWED_END' \
+            'debug 3 PRODUCTION_NAME debug' \
+            'debug 4 PRODUCTION_ALIAS d' \
+            'debug 9 PRODUCTION_REQUIRED' \
+            'help 3 PRODUCTION_NAME help' \
+            'help 4 PRODUCTION_ALIAS h' \
             '~ 1 PRODUCTION_ARG_FILE ./help/sample' \
             'd 7 PRODUCTION_ARG_ALIAS d' \
             'd 8 PRODUCTION_ARG_VALUE true' \

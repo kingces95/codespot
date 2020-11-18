@@ -10,8 +10,8 @@ util::unindent << EOF
 
             token_name line word [identifier]
 
-        TOKEN_NAME matches '${CLI_ARG_NAME_GLOB}'.
-        TOKEN_ALIAS matches '${CLI_ARG_ALIAS_GLOB}'.
+        TOKEN_NAME matches '${CLI_DSL_ARG_NAME_GLOB}'.
+        TOKEN_ALIAS matches '${CLI_DSL_ARG_ALIAS_GLOB}'.
         TOKEN_IDENTIFIER matches anything else that does not start
         with a dash, in which case TOKEN_ERROR is emitted.
 
@@ -35,10 +35,10 @@ main() {
     while IFS= read; do
         word_number=$(( word_number + 1 ))
 
-        if [[ "${REPLY}" == $CLI_ARG_NAME_GLOB ]]; then
+        if [[ "${REPLY}" == $CLI_DSL_ARG_NAME_GLOB ]]; then
             yield "${TOKEN_NAME}" "${REPLY#--}"
 
-        elif [[ "${REPLY}" == $CLI_ARG_ALIAS_GLOB ]]; then
+        elif [[ "${REPLY}" == $CLI_DSL_ARG_ALIAS_GLOB ]]; then
             yield "${TOKEN_ALIAS}" "${REPLY#-}"
 
         elif [[ ! "${REPLY}" == -* ]]; then
@@ -55,7 +55,7 @@ main() {
     yield $TOKEN_EOF
 }
 
-test() (
+self_test() (
     cd "$(dirname ${BASH_SOURCE})"
 
     util::yield_args \

@@ -1,24 +1,52 @@
 #!/usr/bin/env bash
-. $(dirname ${BASH_SOURCE})/cli.sh
+source /dev/stdin < <(cli shim)
 
 help() {
-util::unindent << EOF
-    Command
-        cli
+cat << EOF
+Command
+    cli
 
-    Global Arguments
-        --help -h               : Show this message and exit.
-        --self-test             : Runs a self test.
+Global Arguments
+    --help -h        [Flag] : Show this message and exit.
+    --self-test      [Flag] : Runs a self test.
+
+Attributes
+    version 0.1.0
+    licence MIT
+    description Command Line Tool loader.
 EOF
 }
 
 main() {
-    echo version 0.1.0
-    echo licence MIT
-    echo description Command Line Tool loader.
+    cli::export cli
 }
 
-test() {
+# logging
+cli::log() { >&2 echo $@; }
+
+# exiting
+cli::die() { 
+    cli::log "ERROR:" $@
+    cli::log_callstack
+    exit 1
+}
+
+cli::if_tty_then_redirect_to_file() {
+    local file_descriptor="${1?}"
+    local file="${2?}"
+
+    if [[ -t ${file_descriptor} ]]; then
+        # clear
+        : > "${file}"
+
+        # redirect
+        eval "exec ${file_descriptor}>> ${file}"
+    fi
+}
+
+self_test() {
+    source /dev/stdin < <(cli_assert)
+
     util::indent <<< $(echo ok) \
         | assert::pipe_eq_exact \
             '    ok'
@@ -56,4 +84,4 @@ test() {
     #         "    ${line_number} main $0"
 }
 
-shim "$@"
+cli::shim "$@"

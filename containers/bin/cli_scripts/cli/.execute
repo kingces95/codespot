@@ -1,47 +1,30 @@
 #!/usr/bin/env bash
-. $(dirname ${BASH_SOURCE})/cli.sh
+
+help() {
+cat << EOF
+Command
+    cli .execute
+
+Description
+    Accepts raw command line arguments where the \$1 is the path to the
+    cli tool directory followed by path segments which combine to form
+    the relative path from the cli directory to an executable file (command) 
+    or a directory (group). If a file, then the file is executed and 
+    passed the remaining arguments. If a directory, then a listing of
+    the commands in that group is displayed.
+
+Global Arguments
+    --self-test         [Flag] : Runs a self test over all commands.
+EOF
+}
 
 # shift arguments including $1 into $0
 BASH_ARGV0=${1?"First argument to 'execute' should be /path/to/command"}
 shift
 
-# used to debug a stage in the loader pipeline
-: ${CLI_STAGE:=100}
-
-# paths to dsl sub-scripts (e.g. cli/dsl/help/tokenize)
-readonly CLI_DIR=$(util::this_dir)
-readonly CLI_DSL_DIR="${CLI_DIR}/dsl"
-readonly CLI_DSL_ARGS_DIR="${CLI_DSL_DIR}/args"
-readonly CLI_DSL_ARGS_TOKENIZE="${CLI_DSL_ARGS_DIR}/tokenize"
-readonly CLI_DSL_ARGS_PARSE="${CLI_DSL_ARGS_DIR}/parse"
-readonly CLI_DSL_LOAD="${CLI_DSL_DIR}/load"
-readonly CLI_DSL_PATCH="${CLI_DSL_DIR}/patch"
-readonly CLI_DSL_COMPILE="${CLI_DSL_DIR}/compile"
-readonly CLI_DSL_EXECUTE="${CLI_DSL_DIR}/execute"
-
-pipe() {
-    local stage="$1"
-    local cmd="$2"
-
-    if (( stage < CLI_STAGE )); then
-        eval "${cmd}"
-    else
-        if (( stage == CLI_STAGE )); then
-            eval "${cmd}" > /dev/stderr
-        fi
-        echo ":"
-    fi
-}
-
-assert() {
-    local variable=$1
-    local blob=$2
-    local message=$3
-
-    if [[ ! "${variable}" == $blob ]]; then
-        error "${message}"
-    fi
-}
+readonly CLI_ARG_CHAR_GLOB="[a-zA-Z0-9-]"
+readonly CLI_DSL_ARG_NAME_GLOB="-*"
+readonly CLI_ARG_DIR_ENTRY_GLOB="?([.])+(${CLI_ARG_CHAR_GLOB})"
 
 error() {
     local message=$1
@@ -50,25 +33,41 @@ error() {
 }
 
 main() {
+    local path=$0
     local args=()
 
-    util::yield_args "$0" "$@" \
-        | pipe 0 "${CLI_DSL_ARGS_TOKENIZE}" \
-        | pipe 1 "${CLI_DSL_ARGS_PARSE}" \
-        | pipe 2 "${CLI_DSL_LOAD}" \
-        | pipe 3 "${CLI_DSL_PATCH}" \
-        | pipe 4 "${CLI_DSL_COMPILE}" \
-        | while read; do args+=( "${REPLY}" ); done
+    # bind to command path
+    while (( $# > 0 )); do
 
-    "${args}" "${args[@]:1}"
-}
+        # stop concatenating path segments once the first argument is found (e.g. --foo)
+        if [[ "$1" == ${CLI_DSL_ARG_NAME_GLOB} ]]; then 
+            break
+        fi
 
-test() {
-    return
+        # ensure uniformity of path segments (e.g. foo_bar, not foo-bar)
+        if [[ ! "$1" == $CLI_ARG_DIR_ENTRY_GLOB ]]; then
+            error "Unexpected command name '$1' does not match '$CLI_ARG_DIR_ENTRY_GLOB'."
+        fi
+
+        path="${path}/${1//-/_}"
+        shift
+    done
+
+    # bind to file
+    if [[ -f "${path}" ]] && [[ -x "${path}" ]]; then
+        "${path}" "$@"
+
+    # bind to directory
+    elif [[ -d "${path}" ]]; then
+        production=${PRODUCTION_ARG_DIR}
+
+    # bind fail
+    else
+        error "Unexpected path '${path}' is neither an executable file nor a directory."
+    fi
 }
 
 case "${1-}" in
-    'shim') shift; $(dirname ${BASH_SOURCE})/shim "$@" ;;
-    '--self-test') cli self-test --dir "$0" ;;
+    '.execute') help ;;
     *) main "$@"
 esac

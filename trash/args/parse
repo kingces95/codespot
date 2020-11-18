@@ -78,7 +78,7 @@ main() {
     START
 }
 
-test() (
+self_test() (
     cd "$(dirname ${BASH_SOURCE})"
 
     util::yield_args . \
