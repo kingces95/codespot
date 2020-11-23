@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
+source /dev/stdin < <(cli loader)
 . $(dirname ${BASH_SOURCE})/../../cli.sh
 
 help() {
@@ -88,4 +88,4 @@ self_test() (
             "TOKEN_ERROR 1 5 Unexpected argument '-run-as'."
 )
 
-shim "$@"
+cli::load "$@"

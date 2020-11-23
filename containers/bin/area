@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 CLI_SCRIPTS="$(dirname ${BASH_SOURCE})/cli_scripts"
-"${CLI_SCRIPTS}/cli/.shim" "${CLI_SCRIPTS}/cli" "$@"
+"${CLI_SCRIPTS}/cli/.shim" "${CLI_SCRIPTS}/area" "$@"

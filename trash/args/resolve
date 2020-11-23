@@ -24,4 +24,4 @@ main() {
     fi
 }
 
-shim "$@"
+cli::load "$@"

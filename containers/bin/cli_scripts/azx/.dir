@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+source /dev/stdin < <(cli loader)
+. $(dirname ${BASH_SOURCE})/azx.sh
+
+help() {
+util::unindent << EOF
+    Command
+        azx
+
+    Global Arguments
+        --help -h               : Show this message and exit.
+        --self-test             : Runs a self test.
+EOF
+}
+
+attributes() {
+    echo version 0.1.0
+    echo licence MIT
+    echo description Command extensions to the az cli.
+}
+
+AZX_TYPE_RESOURCE_GROUP=Microsoft.Resources/resourceGroups
+
+DocApp="All application commands."
+DocResource="Manage Azure resources."
+DocResourceId="Format resource ids."
+DocGroup="Manage Azure resource groups."
+
+main() {
+    cli::export azx
+}
+
+azx::log() {
+    #log $ az $*
+    az "$@"
+}
+
+azx::tsv() (
+    azx::log "$@" --output tsv
+)
+
+azx::get_subscription_id() (
+    azx::tsv account show --query id
+)
+
+self_test() (
+    return
+)
+
+cli::load "$@"

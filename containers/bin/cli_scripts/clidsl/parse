@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
-source /dev/stdin < <(cli dsl .dir)
+source /dev/stdin < <(cli loader)
+source /dev/stdin < <(cli::import clidsl .dir)
 
 help() {
     cat << EOF
 Command
-    cli dsl help parse
+    clidsl help parse
 
 Description
     Read command help tokens from stdin and emit productions to stdout 
@@ -209,4 +209,4 @@ self_test() {
             'self-test 4 FLAG'
 }
 
-cli::shim "$@"
+cli::load "$@"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
+source /dev/stdin < <(cli loader)
 . $(dirname ${BASH_SOURCE})/../cli.sh
 
 help() {
@@ -84,4 +84,4 @@ self_test() (
             '~ 1 PRODUCTION_ARG_FILE ./help/sample'
 )
 
-shim "$@"
+cli::load "$@"

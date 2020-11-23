@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
-source /dev/stdin < <(cli dsl .dir)
-source /dev/stdin < <(cli_emit)
+source /dev/stdin < <(cli loader)
+source /dev/stdin < <(cli::import clidsl .dir)
+source /dev/stdin < <(cli::import cli_emit)
 
 help() {
     cat << EOF
-    Command
-        cli dsl emit
+Command
+    clidsl emit
 
-    Global Arguments
+Global Arguments
     --help -h        [Flag] : Show this message and exit.
     --self-test      [Flag] : Runs a self test.
 EOF
@@ -16,15 +16,6 @@ EOF
 
 # name of function which declares variables and verifies/assigns values
 INITIALIZE=initialize
-
-main2() {
-    local -A flags
-    local -A allowed_values 
-
-    # spoof tokenize/parse
-    flags=( [arg_bar]=true )
-    allowed_values=( [--foo]="a b c" ) # allowed
-}
 
 main() {
     local -A names # eg +=( ['--foo']='arg_foo' ) and maybe +=( ['-f']='arg_foo' )
@@ -100,7 +91,7 @@ main() {
                         emit::assign "${arg_name}" 'true' \
                             | emit::case_inline "${i}"
                     else
-                        { emit::assign_string "${arg_name}" "\$2"; emit::shift; } \
+                        { emit::assign_string "${arg_name}" "\${2:-}"; emit::shift; } \
                             | emit::inline \
                             | emit::case_inline "${i}"
                     fi
@@ -108,7 +99,7 @@ main() {
                 emit::error "Unexpected argument '\$1'." \
                     | emit::case_default
             } | emit::case_statement "\$1"
-            emit::shift;
+            emit::shift | emit::if_inline "(( \$# > 0 ))"
         } | emit::while "(( \$# > 0 ))"
         emit::new_line
 
@@ -130,6 +121,11 @@ main() {
             } | emit::case_statement "\${${names[$i]}}"
         done
     } | emit::function ${INITIALIZE}
+}
+
+emit::if_inline() {
+    read
+    echo "if $1; then ${REPLY}; fi"
 }
 
 self_test() (
@@ -155,23 +151,26 @@ self_test() (
         
         # defaults
         arg_fruit="banana"
+        arg_self_test=false
+        arg_help=false
+        arg_display_args=false
         
         # assign variables from command line arguments
         while (( $# > 0 )); do
             case "$1" in
-                '--help') arg_help="true" ;;
-                '--self-test') arg_self_test="true" ;;
-                '--fruit') arg_fruit="$2"; shift ;;
-                '--display-args') arg_display_args="true" ;;
-                '--header') arg_header="$2"; shift ;;
-                '-h') arg_help="true" ;;
-                '--run-as') arg_run_as="$2"; shift ;;
+                '--help') arg_help=true ;;
+                '--self-test') arg_self_test=true ;;
+                '--fruit') arg_fruit="${2:-}"; shift ;;
+                '--display-args') arg_display_args=true ;;
+                '--header') arg_header="${2:-}"; shift ;;
+                '-h') arg_help=true ;;
+                '--run-as') arg_run_as="${2:-}"; shift ;;
                 *)
                     echo "Unexpected argument '$1'."
                     exit 1
                 ;;
             esac
-            shift
+            if (( $# > 0 )); then shift; fi
         done
         
         # required
@@ -191,12 +190,12 @@ self_test() (
         esac
     }
 
-    diff <(declare -f initialize) <(declare -f expected) \
+    diff <(declare -f expected) <(declare -f initialize) \
         | assert::pipe_eq \
             '1c1' \
-            '< initialize ()' \
+            '< expected ()' \
             '---' \
-            '> expected ()'
+            '> initialize ()' 
 )
 
-cli::shim "$@"
+cli::load "$@"

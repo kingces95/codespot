@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
-. $(dirname ${BASH_SOURCE})/.sh
+source /dev/stdin < <(cli loader)
+source /dev/stdin < <(cli::import vscs .dir)
+source /dev/stdin < <(cli::import cli_util)
 
 help() (
 util::unindent << EOF
@@ -35,4 +36,4 @@ main() {
 EOF
 }
 
-shim "$@"
+cli::load "$@"

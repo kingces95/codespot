@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
+source /dev/stdin < <(cli loader)
 
 help() {
     cat << EOF
 Command
-    cmd dls sample : Sample command to test Domain Specific Language.
+    cmddls sample : Sample command to test Domain Specific Language.
 
 Arguments
     --run-as                    : Run as the specified user.
@@ -24,9 +24,11 @@ EOF
 }
 
 main() {
-    echo ${arg_header}
+    echo "${arg_header}"
     echo "whoami=$(whoami)"
     if [[ "${arg_display_args}" == 'true' ]]; then
+        echo "\$0 -- $0"
+        echo "\$@ -- $@"
         declare -p | grep arg_
     fi
     # while read; do echo "${REPLY}"; done
@@ -36,4 +38,4 @@ self_test() {
     return
 }   
 
-cli::shim "$@"
+cli::load "$@"

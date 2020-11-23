@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
+source /dev/stdin < <(cli loader)
 
 help() {
 cat << EOF
@@ -9,6 +9,8 @@ Command
 Arguments
     --dir -d                : Directory to search.
     --recursive  -r  [Flag] : Recurse.
+    --all            [Flag] : Include commands beginning with dot.
+    --base-dir              : Internal. The base directory. Default: ".".
 
 Global Arguments
     --help -h        [Flag] : Show this message and exit.
@@ -17,10 +19,15 @@ EOF
 }
 
 main() (
+    local glob='*'
+    if ${arg_all}; then
+        glob='* .[^.]*'
+    fi
+
     cd "${arg_dir}"
-    for entry in *; do 
+    for entry in ${glob}; do
         if [ -f "${entry}" ] && [ -x "${entry}" ]; then
-            echo "$(pwd)/${entry}"
+            echo "${arg_base_dir}/${entry}"
         fi
     done
 
@@ -28,11 +35,14 @@ main() (
         exit
     fi
 
-    for entry in *; do 
+    for entry in *; do
         if [ -d "${entry}" ] && [ -x "${entry}" ]; then
-            cli find commands --dir "$(pwd)/${entry}" --recursive
+            cli find commands \
+                --dir "$(pwd)/${entry}" \
+                --base-dir "${arg_base_dir}/${entry}" \
+                --recursive
         fi
     done
 )
 
-shim "$@"
+cli::load "$@"

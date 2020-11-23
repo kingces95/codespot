@@ -1,0 +1,324 @@
+#!/usr/bin/env bash
+CLI_PACKED='true'
+
+#
+# Table Of Content
+#
+# commands:
+#     area::circle
+#     area::square
+# 
+# references:
+#     area
+
+#
+# Loader
+#
+set +m
+shopt -s lastpipe
+set -e
+set -u
+shopt -s globstar
+shopt -s extglob
+shopt -s nullglob
+help() { echo "Unexpected missing 'help' in ${BASH_SOURCE[1]}."; }
+self_test() { return; }
+declare -- CLI_REFLECT=""
+cli::escape_args_then_call_as () 
+{ 
+    local user=$1;
+    shift;
+    local -a args;
+    for i in "$@";
+    do
+        args+=($(printf %q "${i}"));
+    done;
+    sudo su "${user}" -c "${args[*]}"
+}
+cli::export () 
+{ 
+    cli::export_variables "$@";
+    cli::export_functions "$@"
+}
+cli::export_functions () 
+{ 
+    local glob;
+    for i in "$@";
+    do
+        glob+="${i}::";
+    done;
+    while read keyword flags name; do
+        if [[ "${name}" == ${glob}* ]]; then
+            declare -f "${name}";
+        fi;
+    done < <(declare -F)
+}
+cli::export_variables () 
+{ 
+    local -u glob;
+    for i in "$@";
+    do
+        glob+="${i}_";
+    done;
+    for i in $(eval echo "\${!${glob}@}");
+    do
+        declare -p "${i}";
+    done
+}
+cli::import () 
+{ 
+    if [[ ${CLI_PACKED:=} == 'true' ]]; then
+        echo "cli::shim ${1//_/-} ${@:2}";
+    else
+        if [[ ${CLI_REFLECT:=} == 'true' ]]; then
+            echo $@ > /dev/stderr;
+        fi;
+        "$@";
+    fi
+}
+cli::load () 
+{ 
+    if ! declare -F initialize > /dev/null; then
+        help | clidsl tokenize | clidsl parse | clidsl emit | source /dev/stdin;
+        for i in "$@";
+        do
+            if [[ "${i}" == '---declare-prolog' ]]; then
+                declare -f initialize;
+                exit;
+            fi;
+        done;
+    fi;
+    for i in "$@";
+    do
+        if [[ "${i}" == '-h' ]] || [[ "${i}" == '--help' ]]; then
+            help;
+            exit;
+        else
+            if [[ "${i}" == '--self-test' ]]; then
+                self_test;
+                exit;
+            else
+                if [[ "${i}" == '---declare-prolog' ]]; then
+                    exit;
+                fi;
+            fi;
+        fi;
+    done;
+    unset i;
+    : ${arg_run_as:=};
+    local -a args=("$@");
+    initialize "$@";
+    if [[ -n "${arg_run_as}" ]] && [[ ! "${arg_run_as}" == "$(whoami)" ]]; then
+        cli::escape_args_then_call_as "${arg_run_as}" "$0" "${args[@]}";
+    else
+        unset arg_run_as;
+        unset arg_self_test;
+        unset arg_help;
+        unset args;
+        main;
+    fi
+}
+cli::source () 
+{ 
+    if [[ "${arg_dry_run:=}" == "true" ]]; then
+        while read; do
+            echo ${REPLY};
+        done;
+    else
+        if [[ "${arg_debug:=}" == "true" ]]; then
+            set -x;
+        fi;
+        source /dev/stdin;
+        if [[ "${arg_debug:=}" == "true" ]]; then
+            set +x;
+        fi;
+    fi
+}
+
+#
+# Commands
+#
+area::circle() (
+    initialize () 
+    { 
+        declare -g arg_help="";
+        declare -g arg_radius="";
+        declare -g arg_self_test="";
+        declare -g arg_help="";
+        arg_self_test=false;
+        arg_help=false;
+        while (( $# > 0 )); do
+            case "$1" in 
+                '--help')
+                    arg_help=true
+                ;;
+                '--radius')
+                    arg_radius="${2:-}";
+                    shift
+                ;;
+                '--self-test')
+                    arg_self_test=true
+                ;;
+                '-h')
+                    arg_help=true
+                ;;
+                *)
+                    echo "Unexpected argument '$1'.";
+                    exit 1
+                ;;
+            esac;
+            if (( $# > 0 )); then
+                shift;
+            fi;
+        done;
+        if [[ -z "${arg_radius}" ]]; then
+            echo "Missing required argument '--radius'.";
+            exit 1;
+        fi
+    }
+    source /dev/stdin < <(cli::import area .dir)
+    
+    help() {
+        cat << EOF
+Command
+    area square
+
+Arguments
+    --radius     [Required] : Radius of the circle.
+
+Global Arguments
+    --help -h        [Flag] : Show this message and exit.
+    --self-test      [Flag] : Runs a self test.
+EOF
+    }
+    
+    main() {
+        echo $(area::multiply ${AREA_PI} $(area::square ${arg_radius}))
+    }
+    
+    cli::load "$@"
+)
+area::square() (
+    initialize () 
+    { 
+        declare -g arg_help="";
+        declare -g arg_self_test="";
+        declare -g arg_help="";
+        declare -g arg_side="";
+        arg_self_test=false;
+        arg_help=false;
+        while (( $# > 0 )); do
+            case "$1" in 
+                '--help')
+                    arg_help=true
+                ;;
+                '--self-test')
+                    arg_self_test=true
+                ;;
+                '-h')
+                    arg_help=true
+                ;;
+                '--side')
+                    arg_side="${2:-}";
+                    shift
+                ;;
+                *)
+                    echo "Unexpected argument '$1'.";
+                    exit 1
+                ;;
+            esac;
+            if (( $# > 0 )); then
+                shift;
+            fi;
+        done;
+        if [[ -z "${arg_side}" ]]; then
+            echo "Missing required argument '--side'.";
+            exit 1;
+        fi
+    }
+    source /dev/stdin < <(cli::import area .dir)
+    
+    help() {
+        cat << EOF
+Command
+    area square
+
+Arguments
+    --side        [Required] : Length of a side.
+
+Global Arguments
+    --help -h        [Flag] : Show this message and exit.
+    --self-test      [Flag] : Runs a self test.
+EOF
+    }
+    
+    main() {
+        echo $(area::multiply ${arg_side} ${arg_side})
+    }
+    
+    cli::load "$@"
+)
+
+#
+# Libraries
+#
+area::.dir() {
+    declare -- AREA_PI="3.14159"
+    area::multiply () 
+    { 
+        echo "$1 * $2" | bc -l
+    }
+    area::square () 
+    { 
+        echo "$1 * $1" | bc -l
+    }
+}
+
+#
+# Shim
+#
+declare -r CLI_ARG_CHAR_GLOB="[a-zA-Z0-9-]"
+declare -r CLI_DSL_ARG_NAME_GLOB="-*"
+declare -r CLI_ARG_DIR_ENTRY_GLOB="?([.])+([a-zA-Z0-9-])"
+cli::shim () 
+{ 
+    local path=;
+    local delimiter=;
+    if [[ ! "${CLI_PACKED}" == 'true' ]]; then
+        delimiter='/';
+        path=${1?"First shim argument should be /path/to/command"};
+        shift;
+    else
+        delimiter='::';
+    fi;
+    while (( $# > 0 )); do
+        if [[ "$1" == ${CLI_DSL_ARG_NAME_GLOB} ]]; then
+            break;
+        fi;
+        if [[ ! "$1" == $CLI_ARG_DIR_ENTRY_GLOB ]]; then
+            echo "Unexpected command name/group '$1' does not match '$CLI_ARG_DIR_ENTRY_GLOB'.";
+            exit 1;
+        fi;
+        if [[ -n "${path}" ]]; then
+            path="${path}${delimiter}";
+        fi;
+        path="${path}${1//-/_}";
+        shift;
+    done;
+    if declare -F "$path" > /dev/null; then
+        "${path}" "$@";
+    else
+        if [[ -f "${path}" ]] && [[ -x "${path}" ]]; then
+            "${path}" "$@";
+        else
+            if [[ -d "${path}" ]]; then
+                production=${PRODUCTION_ARG_DIR};
+            else
+                echo "Unexpected path '${path}' is neither a function, executable file, or directory.";
+                exit 1;
+            fi;
+        fi;
+    fi
+}
+
+cli::shim area "$@"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
+source /dev/stdin < <(cli loader)
 
 main() {
     cli::export assert
@@ -263,4 +263,4 @@ assert::le() {
   fi
 }
 
-cli::shim
+cli::load "$@"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
+source /dev/stdin < <(cli loader)
 
 help() {
     cat << EOF
@@ -129,4 +129,4 @@ initialize() {
     util::initialize "$@"
 }
 
-cli::shim
+cli::load "$@"

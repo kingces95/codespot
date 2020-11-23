@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
-. $(dirname ${BASH_SOURCE})/../../azx.sh
+source /dev/stdin < <(cli loader)
+source /dev/stdin < <(cli::import azx .dir)
 
 help() (
 util::unindent << EOF
@@ -31,4 +31,4 @@ main() {
     echo ${id}
 }
 
-shim "$@"
+cli::load "$@"

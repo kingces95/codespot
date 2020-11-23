@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
-source /dev/stdin < <(cli_util)
+source /dev/stdin < <(cli loader)
+source /dev/stdin < <(cli::import cli_util)
 
 help() {
-cat << EOF
+    cat << EOF
 Command
-    cli dsl
+    clidsl
 
 Global Arguments
     --help -h        [Flag] : Show this message and exit.
@@ -52,17 +52,6 @@ readonly CLI_DSL_PRODUCTION=(
     'ERROR'
 ) && util::declare_enums CLI_DSL_PRODUCTION
 
-readonly CLI_DSL_INSTRUCTION=(
-    'ASSIGN'
-    'TEST'
-    'SKIP'
-    'ASSERT'
-    'PUSH'
-    'CALL'
-    'ECHO'
-    'EXIT'
-) && util::declare_enums CLI_DSL_INSTRUCTION
-
 main() {
     cli::export cli dsl
     declare -f initialize
@@ -81,4 +70,4 @@ initialize() {
     done
 }
 
-cli::shim "$@"
+cli::load "$@"

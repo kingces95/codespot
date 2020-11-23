@@ -100,4 +100,4 @@ initialize() {
     done
 }
 
-cli::shim "$@"
+cli::load "$@"

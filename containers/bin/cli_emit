@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
+source /dev/stdin < <(cli loader)
 source /dev/stdin < <(cli_util)
+
+EMIT_TAB="    "
 
 main() {
     cli::export emit
@@ -14,9 +16,39 @@ emit::comment() {
     echo "# $1"
 }
 
+emit::file() {
+    # emit content to include last 'pseudo' line
+    # (see https://stackoverflow.com/a/12919766/2303356)
+    while read -r || [ -n "${REPLY}" ]; do 
+        echo "${REPLY}"
+    done
+}
+
 emit::indented() {
-    while read; do 
-        echo "${CLI_DSL_LITERAL_TAB}${REPLY}"
+    local regex='<< ([A-Z]+)'
+    local eof=
+
+    while read; do
+
+        # start heredoc
+        if [[ "${REPLY}" =~ ${regex} ]]; then
+            echo "${EMIT_TAB}${REPLY}"
+            eof=${BASH_REMATCH[1]}
+
+            # in heredoc
+            while read -r; do
+                echo "${REPLY}"
+            
+                # end heredoc
+                if [[ "${REPLY}" == "${eof}" ]]; then
+                    break
+                fi
+            done
+
+            continue
+        fi
+
+        echo "${EMIT_TAB}${REPLY}"
     done
 }
 
@@ -24,6 +56,12 @@ emit::function() {
     echo "$1() {"
     emit::indented
     echo "}"
+}
+
+emit::subproc() {
+    echo "$1() ("
+    emit::indented
+    echo ")"
 }
 
 emit::shift() {
@@ -124,4 +162,4 @@ initialize() {
     util::initialize "$@"
 }
 
-cli::shim "$@"
+cli::load "$@"

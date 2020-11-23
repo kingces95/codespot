@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
+source /dev/stdin < <(cli loader)
 . $(dirname ${BASH_SOURCE})/../../cli.sh
 
 declare line
@@ -132,4 +132,4 @@ self_test() (
             "foo 13 PRODUCTION_ERROR Unexpected argument 'baz'. Expected token in { TOKEN_NAME TOKEN_ALIAS }, but got TOKEN_IDENTIFIER."
 )
 
-shim "$@"
+cli::load "$@"

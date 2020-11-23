@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
-#. $(dirname ${BASH_SOURCE})/vscs.sh
+source /dev/stdin < <(cli loader)
 
 help() {
 cat << EOF
@@ -17,22 +16,13 @@ Attributes
 EOF
 }
 
-cli::export::function() {
-    declare -f $1
-}
-
-cli::export::variable() {
-    echo "$1"="$2"
-}
+VSCS_HOST https://update.code.visualstudio.com
+VSCS_DIR_STABLE ~/.vscode-server
+VSCS_DIR_INSIDER ${VSCS_DIR_STABLE}-insiders
+SCS_TARGZC_TEMP /tmp/vscode.tar.gzc
 
 main() {
-    cli::export::variable VSCS_HOST https://update.code.visualstudio.com
-    cli::export::variable VSCS_DIR_STABLE ~/.vscode-server
-    cli::export::variable VSCS_DIR_INSIDER ${VSCS_DIR_STABLE}-insiders
-    cli::export::variable VSCS_TARGZC_TEMP /tmp/vscode.tar.gzc
-
-    cli::export::function vscs::declare_server_dirs
-    cli::export::function vscs::declare_dirs
+    cli::export vscs
 }
 
 vscs::declare_server_dirs() {
@@ -55,4 +45,4 @@ vscs::declare_dirs() {
     commit_dir=${server_dir}/bin/${arg_commit}
 }
 
-shim "$@"
+cli::load "$@"

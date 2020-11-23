@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
+# source /dev/stdin < <(cli loader)
 
 help() {
     cat << EOF
 Command
-    cli shim
+    cli loader
 
 Summary
-    Prints the source for function 'shim'.
+    Prints the source for function 'cli::load'.
     
 Description
 
@@ -47,8 +48,10 @@ main() {
 
     echo "help() { echo \"Unexpected missing 'help' in \${BASH_SOURCE[1]}.\"; }"
     echo "self_test() { return; }"
+    if [[ ${CLI_REFLECT:=} == 'true' ]]; then
+        echo "initialize() { return; }"
+    fi
     cli::export cli
-    echo "shim() { cli::shim \"\$@\"; }"
 }
 
 cli::export_functions() {
@@ -82,6 +85,18 @@ cli::export() {
     cli::export_functions "$@"
 }
 
+cli::import() {
+    if [[ ${CLI_PACKED:=} == 'true' ]]; then
+        # $0 may be a file name (e.g. cli_emit), convert it to a command name
+        echo "cli::shim ${1//_/-} ${@:2}"
+    else
+        if [[ ${CLI_REFLECT:=} == 'true' ]]; then
+            echo $@ > /dev/stderr
+        fi
+        "$@"
+    fi
+}
+
 # dry run support
 cli::source() {
     if [[ "${arg_dry_run:=}" == "true" ]]; then 
@@ -94,19 +109,35 @@ cli::source() {
     fi
 }
 
-cli::shim() {
+cli::escape_args_then_call_as() {
+    local user=$1
+    shift
 
-    escape_args_then_call_as() {
-        local user=$1
-        shift
+    local -a args
+    for i in "$@"; do
+        args+=( $(printf %q "${i}") )
+    done
 
-        local -a args
+    sudo su "${user}" -c "${args[*]}"
+}
+
+cli::load() {
+
+    # source 'initialize()' if not already defined
+    if ! declare -F initialize > /dev/null; then
+        help \
+            | clidsl tokenize \
+            | clidsl parse \
+            | clidsl emit \
+            | source /dev/stdin
+
         for i in "$@"; do
-            args+=( $(printf %q "${i}") )
+            # prolog for inclusion in a packed command
+            if [[ "${i}" == '---declare-prolog' ]]; then
+                declare -f initialize; exit
+            fi
         done
-
-        sudo su "${user}" -c "${args[*]}"
-    }
+    fi
 
     # implement known flags before verifying arguments
     for i in "$@"; do
@@ -114,18 +145,11 @@ cli::shim() {
             help; exit
         elif [[ "${i}" == '--self-test' ]]; then
             self_test; exit
+        elif [[ "${i}" == '---declare-prolog' ]]; then
+            exit
         fi
     done
     unset i
-
-    # resolve aliases, and verify arguments
-    if ! declare -F initialize > /dev/null; then
-        help \
-            | cli dsl tokenize \
-            | cli dsl parse \
-            | cli dsl emit \
-            | source /dev/stdin
-    fi
 
     # declare well known variables
     : ${arg_run_as:=}
@@ -135,7 +159,7 @@ cli::shim() {
 
     # implement well known features
     if [[ -n "${arg_run_as}" ]] && [[ ! "${arg_run_as}" == "$(whoami)" ]]; then
-        escape_args_then_call_as "${arg_run_as}" "$0" "${args[@]}"
+        cli::escape_args_then_call_as "${arg_run_as}" "$0" "${args[@]}"
     else
         # clean up known arguments
         unset arg_run_as
@@ -158,4 +182,4 @@ initialize() {
     done
 }
 
-cli::shim "$@"
+cli::load "$@"

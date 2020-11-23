@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
+source /dev/stdin < <(cli loader)
 
 help() {
 cat << EOF
@@ -84,4 +84,4 @@ self_test() {
     #         "    ${line_number} main $0"
 }
 
-cli::shim "$@"
+cli::load "$@"

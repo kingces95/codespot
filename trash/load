@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
+source /dev/stdin < <(cli loader)
 . $(dirname ${BASH_SOURCE})/../cli.sh
 
 help() {
@@ -103,4 +103,4 @@ self_test() (
             ". 13 PRODUCTION_ERROR Unexpected path './bad/path' is neither an executable file nor a directory."
 )
 
-shim "$@"
+cli::load "$@"

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli shim)
-source /dev/stdin < <(cli dsl .dir)
+source /dev/stdin < <(cli loader)
+source /dev/stdin < <(cli::import clidsl .dir)
 
 help() {
     cat << EOF
 Command
-    cli dsl tokenize
+    clidsl tokenize
 
 Description
     Read command help from stdin and emit tokens to stdout one per 
@@ -174,4 +174,4 @@ self_test() (
             'EOF 18 6'
 )
 
-cli::shim "$@"
+cli::load "$@"
