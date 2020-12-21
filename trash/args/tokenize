@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source /dev/stdin < <(cli loader)
+source $(cli loader)
 . $(dirname ${BASH_SOURCE})/../../cli.sh
 
 help() {
