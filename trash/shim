@@ -331,7 +331,7 @@ case ${1-} in
     '---print') cat ${BASH_SOURCE} ;;
     '---which') echo ${BASH_SOURCE} ;;
     '---exports') main ;;
-    '---initialize') ;;
+    '---initialize') echo '/dev/null' ;;
     '---imports') ;;
     -*) cli::shim::unexpected_argument "$1" ;;
     *) 
