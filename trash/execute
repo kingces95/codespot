@@ -74,4 +74,4 @@ self_test() (
     #     | "./execute"
 )
 
-cli::load "$@"
+cli::main "$@"

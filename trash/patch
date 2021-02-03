@@ -84,4 +84,4 @@ self_test() (
             '~ 1 PRODUCTION_ARG_FILE ./help/sample'
 )
 
-cli::load "$@"
+cli::main "$@"

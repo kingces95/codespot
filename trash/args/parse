@@ -132,4 +132,4 @@ self_test() (
             "foo 13 PRODUCTION_ERROR Unexpected argument 'baz'. Expected token in { TOKEN_NAME TOKEN_ALIAS }, but got TOKEN_IDENTIFIER."
 )
 
-cli::load "$@"
+cli::main "$@"

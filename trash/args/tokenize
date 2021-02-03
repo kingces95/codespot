@@ -88,4 +88,4 @@ self_test() (
             "TOKEN_ERROR 1 5 Unexpected argument '-run-as'."
 )
 
-cli::load "$@"
+cli::main "$@"

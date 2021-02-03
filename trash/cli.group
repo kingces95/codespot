@@ -84,4 +84,4 @@ self_test() {
     #         "    ${line_number} main $0"
 }
 
-cli::load "$@"
+cli::main "$@"

@@ -103,4 +103,4 @@ self_test() (
             ". 13 PRODUCTION_ERROR Unexpected path './bad/path' is neither an executable file nor a directory."
 )
 
-cli::load "$@"
+cli::main "$@"

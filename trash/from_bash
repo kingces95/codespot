@@ -56,4 +56,4 @@ self_test() {
     assert::fails "${CLI_COMMAND} <<< $'foo-bar'"
 }
 
-cli::load "$@"
+cli::main "$@"
