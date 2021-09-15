@@ -82,7 +82,7 @@ Description (packed)
 
     would call:
         
-        cli::shim area circle --radius 10 
+        cli::development::shim area circle --radius 10 
         
     which would call:
 
@@ -111,7 +111,7 @@ Examples
         cli shim >> sayhi
         echo "sayhi::english::speak() { echo Hi; }" >> sayhi
         echo "sayhi::french::speak() { echo Bonjour; }" >> sayhi
-        echo "cli::shim sayhi \\\$@" >> sayhi
+        echo "cli::development::shim sayhi \\\$@" >> sayhi
         chmod a+x sayhi
         ./sayhi english speak
         ./sayhi french speak

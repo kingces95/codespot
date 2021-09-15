@@ -5,7 +5,7 @@ cli::import cli-assert
 help() {
     cat << EOF
 Command
-    ${CLI_COMMAND}
+    ${CLI_COMMAND[@]}
 
 Summary
     Join a stream of path segments with a delimiter.
@@ -27,16 +27,16 @@ Global Arguments
 
 Examples
     Join segments 'foo' 'bar' into '/foo/bar'
-        ${CLI_COMMAND} <<< $'foo\nbar'
+        ${CLI_COMMAND[@]} <<< $'foo\nbar'
 
     Join segments '.foo-bar' into '/.foo_bar'
-        ${CLI_COMMAND} --absolute <<< '.foo-bar'
+        ${CLI_COMMAND[@]} --absolute <<< '.foo-bar'
 
     Join segments 'foo' 'bar' into '::foo::bar'
-        ${CLI_COMMAND} --absolute --delimiter '::' <<< $'foo\nbar'
+        ${CLI_COMMAND[@]} --absolute --delimiter '::' <<< $'foo\nbar'
 
     Join base '/usr' with segments 'foo' 'bar' into '/usr/foo/bar'
-        ${CLI_COMMAND} --base '/usr' <<< $'foo\nbar'
+        ${CLI_COMMAND[@]} --base '/usr' <<< $'foo\nbar'
 
 EOF
 }
@@ -84,57 +84,57 @@ main() {
 
 self_test() {
     # join 'foo' and 'bar'
-    ${CLI_COMMAND} <<< $'foo\nbar' \
+    ${CLI_COMMAND[@]} <<< $'foo\nbar' \
         | assert::pipe_eq \
             'foo/bar'
 
     # join 'foo', '', 'bar'
-    ${CLI_COMMAND} <<< $'foo\n\nbar' \
+    ${CLI_COMMAND[@]} <<< $'foo\n\nbar' \
         | assert::pipe_eq \
             'foo/bar'
 
     # absolute
-    ${CLI_COMMAND} --absolute <<< $'foo\nbar' \
+    ${CLI_COMMAND[@]} --absolute <<< $'foo\nbar' \
         | assert::pipe_eq \
             '/foo/bar'
 
     # base as delimiter
-    ${CLI_COMMAND} --base / <<< $'foo\nbar' \
+    ${CLI_COMMAND[@]} --base / <<< $'foo\nbar' \
         | assert::pipe_eq \
             '/foo/bar'
 
     # base as delimiter + absolute
-    ${CLI_COMMAND} --absolute --base / <<< $'foo\nbar' \
+    ${CLI_COMMAND[@]} --absolute --base / <<< $'foo\nbar' \
         | assert::pipe_eq \
             '/foo/bar'
            
     # base
-    ${CLI_COMMAND} --base usr <<< $'foo\nbar' \
+    ${CLI_COMMAND[@]} --base usr <<< $'foo\nbar' \
         | assert::pipe_eq \
             'usr/foo/bar'
 
     # base that ends with a delimiter
-    ${CLI_COMMAND} --base usr/ <<< $'foo\nbar' \
+    ${CLI_COMMAND[@]} --base usr/ <<< $'foo\nbar' \
         | assert::pipe_eq \
             'usr/foo/bar'
             
     # absolute base
-    ${CLI_COMMAND} --absolute --base usr <<< $'foo\nbar' \
+    ${CLI_COMMAND[@]} --absolute --base usr <<< $'foo\nbar' \
         | assert::pipe_eq \
             '/usr/foo/bar'
 
     # absolute + base where base already absolute
-    ${CLI_COMMAND} --absolute --base /usr <<< $'foo\nbar' \
+    ${CLI_COMMAND[@]} --absolute --base /usr <<< $'foo\nbar' \
         | assert::pipe_eq \
             '/usr/foo/bar'
 
     # custom delimiter
-    ${CLI_COMMAND} --delimiter :: <<< $'foo\nbar' \
+    ${CLI_COMMAND[@]} --delimiter :: <<< $'foo\nbar' \
         | assert::pipe_eq \
             'foo::bar'
 
     # segment contains delimiter
-    assert::fails "${CLI_COMMAND} <<< $'/foo/'"
+    assert::fails "${CLI_COMMAND[@]} <<< $'/foo/'"
 }
 
 cli::main "$@"
