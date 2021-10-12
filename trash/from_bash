@@ -13,7 +13,7 @@ Summary
 
 Description
     Converts a stream of bash names to cli names. Fails if any of the
-    bash names do not match regex ${CLI_REGEX_BASH_NAME}.
+    bash names do not match regex ${CLI_LOADER_REGEX_BASH_NAME}.
 
 Global Arguments
     --help -h    [Flag] : Show this message and exit.
@@ -31,10 +31,10 @@ inline() {
 
     local args=( "$@" )
     while (( $# > 0 )); do
-        if [[ ! "$1" =~ ${CLI_REGEX_BASH_NAME} ]]; then
+        if [[ ! "$1" =~ ${CLI_LOADER_REGEX_BASH_NAME} ]]; then
             cli::fail "Unexpected bash name \"$1\"" \
                 "found in \"${args[@]}\"" \
-                "does not match regex ${CLI_REGEX_NAME}."
+                "does not match regex ${CLI_LOADER_REGEX_NAME}."
         fi
         RESULT+=( "${1/_/-}" )
         shift
