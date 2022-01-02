@@ -32,7 +32,7 @@ inline() {
     local args=( "$@" )
     while (( $# > 0 )); do
         if [[ ! "$1" =~ ${CLI_LOADER_REGEX_BASH_NAME} ]]; then
-            cli::fail "Unexpected bash name \"$1\"" \
+            cli::stderr::fail "Unexpected bash name \"$1\"" \
                 "found in \"${args[@]}\"" \
                 "does not match regex ${CLI_LOADER_REGEX_NAME}."
         fi

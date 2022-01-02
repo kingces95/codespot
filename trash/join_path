@@ -59,7 +59,7 @@ inline() {
     while (( $# > 0 )); do
 
         if [[ "$1" =~ ${arg_delimiter} ]]; then
-            cli::fail "Unexpected segment \"$1\"" \
+            cli::stderr::fail "Unexpected segment \"$1\"" \
             "containing delimiter \"${arg_delimiter}\"" \
             "found while joining segments \"${args[@]}\"."
         fi
